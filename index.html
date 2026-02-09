@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life RPG - Protocolo Azul</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <header class="top-bar">
+            <div class="user-info">
+                <div class="avatar">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar">
+                    <span class="level-badge">Lvl <span id="user-level">1</span></span>
+                </div>
+                <div class="xp-container">
+                    <div class="xp-text">
+                        <span>XP Geral</span>
+                        <span id="xp-display">0 / 1000</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="xp-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main id="main-content">
+            </main>
+
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="navigate('dashboard')">
+                <span class="material-icons-round">dashboard</span>
+                <span>Início</span>
+            </button>
+            <button class="nav-item" onclick="navigate('habits')">
+                <span class="material-icons-round">check_circle</span>
+                <span>Hábitos</span>
+            </button>
+            <button class="nav-item" onclick="navigate('rpg')">
+                <span class="material-icons-round">person</span>
+                <span>Atributos</span>
+            </button>
+            <button class="nav-item" onclick="navigate('quests')">
+                <span class="material-icons-round">emoji_events</span>
+                <span>Missões</span>
+            </button>
+        </nav>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

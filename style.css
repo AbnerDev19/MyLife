@@ -1,0 +1,292 @@
+/* VARIÁVEIS DE COR E TEMA */
+:root {
+    /* Cor Base: Azul Neon (Substituindo o Vermelho) */
+    --primary-color: #0088ff; 
+    --primary-glow: rgba(0, 136, 255, 0.4);
+    --primary-dark: #0055a3;
+    
+    /* Cores de Fundo (Estilo OLED Dark) */
+    --bg-app: #09090b;
+    --bg-card: #18181b;
+    --bg-card-hover: #27272a;
+    
+    /* Texto */
+    --text-main: #ffffff;
+    --text-muted: #a1a1aa;
+    
+    /* Status */
+    --success: #10b981;
+    --danger: #ef4444;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+}
+
+body {
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 480px; /* Simula mobile */
+    background-color: var(--bg-app);
+    position: relative;
+    padding-bottom: 80px; /* Espaço para o menu */
+}
+
+/* --- HEADER & XP --- */
+.top-bar {
+    padding: 20px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(5px);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.avatar {
+    position: relative;
+    width: 60px;
+    height: 60px;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid var(--primary-color);
+}
+
+.level-badge {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    background: var(--primary-color);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+    box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.xp-container {
+    flex: 1;
+}
+
+.xp-text {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.progress-bar-bg {
+    width: 100%;
+    height: 8px;
+    background-color: #333;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-dark), var(--primary-color));
+    box-shadow: 0 0 10px var(--primary-glow);
+    transition: width 0.5s ease;
+}
+
+/* --- CARDS & DASHBOARD --- */
+.section-title {
+    padding: 0 20px;
+    margin: 20px 0 10px 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.grid-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    padding: 0 20px;
+}
+
+.stat-card {
+    background-color: var(--bg-card);
+    padding: 15px;
+    border-radius: 16px;
+    text-align: center;
+    border: 1px solid #333;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color);
+    display: block;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* --- LISTA DE HÁBITOS --- */
+.habit-list {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.habit-card {
+    background-color: var(--bg-card);
+    padding: 15px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid transparent;
+    transition: all 0.3s;
+}
+
+.habit-card:hover {
+    border-color: var(--primary-color);
+}
+
+.habit-info h4 {
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.habit-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background-color: #333;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.check-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background-color: #27272a;
+    border: 2px solid #3f3f46;
+    color: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+/* Estado Concluído */
+.habit-card.completed .check-btn {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.habit-card.completed h4 {
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+/* --- RPG ATTRIBUTES --- */
+.attr-grid {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.attr-card {
+    background: var(--bg-card);
+    padding: 15px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.attr-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+}
+
+.attr-details {
+    flex: 1;
+}
+
+.attr-bar {
+    width: 100%;
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    margin-top: 5px;
+}
+
+.attr-fill {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 3px;
+}
+
+/* --- BOTTOM NAV --- */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    max-width: 480px;
+    background-color: var(--bg-card);
+    height: 70px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid #333;
+    z-index: 20;
+}
+
+.nav-item {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 10px;
+    cursor: pointer;
+    gap: 4px;
+}
+
+.nav-item.active {
+    color: var(--primary-color);
+}
+
+.nav-item.active span.material-icons-round {
+    text-shadow: 0 0 10px var(--primary-glow);
+}
