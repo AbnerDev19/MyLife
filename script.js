@@ -1,179 +1,67 @@
-// --- ESTADO INICIAL DO USUÁRIO ---
-const user = {
-    name: "Player 1",
-    level: 5,
+// Estado do Usuário
+let userState = {
     xp: 450,
-    xpToNextLevel: 1000,
-    streak: 12, // Dias seguidos
-    coins: 150,
-    attributes: {
-        intelligence: { name: "Inteligência", value: 45, icon: "psychology" },
-        strength: { name: "Disciplina", value: 60, icon: "fitness_center" },
-        health: { name: "Saúde", value: 30, icon: "favorite" },
-        social: { name: "Social", value: 20, icon: "groups" }
-    }
+    maxXp: 1000,
+    dailyXP: 0,
+    tasksTotal: 2,
+    tasksDone: 0
 };
 
-// --- DADOS DOS HÁBITOS (MOCK) ---
-const habits = [
-    { id: 1, title: "Ler 10 páginas", xp: 50, attr: "intelligence", completed: false },
-    { id: 2, title: "Treino de Musculação", xp: 100, attr: "strength", completed: false },
-    { id: 3, title: "Beber 3L de água", xp: 30, attr: "health", completed: false },
-    { id: 4, title: "Meditação", xp: 40, attr: "intelligence", completed: true }, // Já completado exemplo
-    { id: 5, title: "Networking no LinkedIn", xp: 60, attr: "social", completed: false }
+// Elementos
+const xpDisplay = document.getElementById('xp-display');
+const xpBar = document.getElementById('xp-bar');
+const dayProgressBar = document.getElementById('day-progress-bar');
+const taskProgressText = document.getElementById('task-progress-text');
+const todayXpDisplay = document.getElementById('today-xp');
+const todayGoalsDisplay = document.getElementById('today-goals');
+
+// Citações Aleatórias
+const quotes = [
+    "A constância vence o talento. 🚀",
+    "Um passo de cada vez, sempre em frente. ⚔️",
+    "Hoje é um ótimo dia para evoluir. 💎",
+    "Foco na missão, recompensa na mão. 🎯"
 ];
+document.getElementById('daily-quote').innerText = quotes[Math.floor(Math.random() * quotes.length)];
 
-// --- FUNÇÕES DE RENDERIZAÇÃO ---
+function toggleTask(checkbox, xpValue) {
+    const card = checkbox.closest('.task-card');
 
-// Atualiza a barra de XP e Nível no Header
-function updateHeader() {
-    document.getElementById('user-level').innerText = user.level;
-    document.getElementById('xp-display').innerText = `${user.xp} / ${user.xpToNextLevel}`;
-    
-    const percentage = (user.xp / user.xpToNextLevel) * 100;
-    document.getElementById('xp-bar').style.width = `${percentage}%`;
-}
-
-// Renderiza a página Dashboard
-function renderDashboard() {
-    const main = document.getElementById('main-content');
-    const completedHabits = habits.filter(h => h.completed).length;
-    const totalHabits = habits.length;
-    
-    main.innerHTML = `
-        <div class="section-title">Visão Geral</div>
-        <div class="grid-stats">
-            <div class="stat-card">
-                <span class="stat-value">${user.streak} <span style="font-size:16px">🔥</span></span>
-                <span class="stat-label">Dias em Sequência</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-value">${Math.round((completedHabits/totalHabits)*100)}%</span>
-                <span class="stat-label">Eficiência Hoje</span>
-            </div>
-        </div>
-
-        <div class="section-title">Hábitos de Hoje</div>
-        <div class="habit-list" id="dashboard-habits">
-            </div>
-    `;
-    
-    renderHabitList('dashboard-habits');
-}
-
-// Renderiza a lista de hábitos
-function renderHabitList(containerId) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = '';
-
-    habits.forEach(habit => {
-        const item = document.createElement('div');
-        item.className = `habit-card ${habit.completed ? 'completed' : ''}`;
-        item.onclick = () => toggleHabit(habit.id); // Clique no card inteiro
-
-        item.innerHTML = `
-            <div class="habit-info">
-                <h4>${habit.title}</h4>
-                <span class="habit-tag">+${habit.xp} XP | ${user.attributes[habit.attr].name}</span>
-            </div>
-            <button class="check-btn">
-                <span class="material-icons-round">check</span>
-            </button>
-        `;
-        container.appendChild(item);
-    });
-}
-
-// Renderiza a página de Atributos (RPG)
-function renderRPG() {
-    const main = document.getElementById('main-content');
-    let htmlContent = `<div class="section-title">Seus Atributos</div><div class="attr-grid">`;
-
-    for (let key in user.attributes) {
-        const attr = user.attributes[key];
-        htmlContent += `
-            <div class="attr-card">
-                <div class="attr-icon">
-                    <span class="material-icons-round">${attr.icon}</span>
-                </div>
-                <div class="attr-details">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <strong>${attr.name}</strong>
-                        <span>Lvl ${Math.floor(attr.value / 10)}</span>
-                    </div>
-                    <div class="attr-bar">
-                        <div class="attr-fill" style="width: ${attr.value}%"></div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    htmlContent += `</div>`;
-    main.innerHTML = htmlContent;
-}
-
-// --- LÓGICA DE AÇÃO ---
-
-// Marcar/Desmarcar Hábito
-function toggleHabit(id) {
-    const habit = habits.find(h => h.id === id);
-    if (!habit) return;
-
-    habit.completed = !habit.completed;
-
-    // Atualizar XP e Atributos
-    if (habit.completed) {
-        user.xp += habit.xp;
-        user.attributes[habit.attr].value += 1; // Sobe o atributo específico
-        checkLevelUp();
+    if (checkbox.checked) {
+        // Completar
+        card.classList.add('completed');
+        userState.xp += xpValue;
+        userState.dailyXP += xpValue;
+        userState.tasksDone++;
     } else {
-        user.xp -= habit.xp;
-        user.attributes[habit.attr].value -= 1;
+        // Desfazer
+        card.classList.remove('completed');
+        userState.xp -= xpValue;
+        userState.dailyXP -= xpValue;
+        userState.tasksDone--;
     }
 
-    updateHeader();
-    
-    // Re-renderizar a página atual para mostrar a animação
-    const currentPage = document.querySelector('.nav-item.active span:last-child').innerText;
-    if(currentPage === 'Início' || currentPage === 'Hábitos') {
-        renderDashboard(); // Simplificado para o exemplo
-    }
+    updateUI();
 }
 
-function checkLevelUp() {
-    if (user.xp >= user.xpToNextLevel) {
-        user.level++;
-        user.xp = user.xp - user.xpToNextLevel;
-        user.xpToNextLevel = Math.floor(user.xpToNextLevel * 1.2); // Dificuldade aumenta
-        alert(`🎉 LEVEL UP! Você alcançou o nível ${user.level}!`);
+function updateUI() {
+    // 1. Barra de XP Geral
+    let xpPercent = (userState.xp / userState.maxXp) * 100;
+    xpBar.style.width = `${Math.min(xpPercent, 100)}%`;
+    xpDisplay.innerText = `${userState.xp} / ${userState.maxXp}`;
+
+    // 2. Barra de Progresso do Dia
+    let dayPercent = (userState.tasksDone / userState.tasksTotal) * 100;
+    dayProgressBar.style.width = `${dayPercent}%`;
+    taskProgressText.innerText = `${Math.round(dayPercent)}% Concluído`;
+
+    // 3. Mini Stats Sidebar
+    todayXpDisplay.innerText = `+${userState.dailyXP}`;
+    todayGoalsDisplay.innerText = `${userState.tasksDone}/${userState.tasksTotal}`;
+
+    // Cor condicional para Stats
+    if (userState.tasksDone === userState.tasksTotal) {
+        taskProgressText.innerText = "Dia Completo! 🎉";
+        taskProgressText.style.color = "var(--neon-green)";
     }
 }
-
-// --- NAVEGAÇÃO ---
-
-function navigate(page) {
-    // Atualiza ícones ativos
-    document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-
-    // Roteamento simples
-    if (page === 'dashboard' || page === 'habits') {
-        renderDashboard();
-    } else if (page === 'rpg') {
-        renderRPG();
-    } else {
-        document.getElementById('main-content').innerHTML = `
-            <div style="padding:20px; text-align:center; color:#666; margin-top:50px;">
-                <span class="material-icons-round" style="font-size:48px;">lock</span>
-                <p>Área de Missões/Conquistas em desenvolvimento...</p>
-            </div>
-        `;
-    }
-}
-
-// Inicialização
-document.addEventListener('DOMContentLoaded', () => {
-    updateHeader();
-    renderDashboard();
-});

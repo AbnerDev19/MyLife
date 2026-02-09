@@ -1,56 +1,242 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Life RPG - Protocolo Azul</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <title>Gemini RPG Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-    <div class="app-container">
-        <header class="top-bar">
-            <div class="user-info">
-                <div class="avatar">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar">
-                    <span class="level-badge">Lvl <span id="user-level">1</span></span>
-                </div>
-                <div class="xp-container">
-                    <div class="xp-text">
-                        <span>XP Geral</span>
-                        <span id="xp-display">0 / 1000</span>
+    <div class="app-layout">
+
+        <aside class="sidebar-left">
+
+            <div class="gemini-card profile-card">
+                <div class="profile-header">
+                    <div class="avatar-container">
+                        <img src="https://ui-avatars.com/api/?name=Hero+Dev&background=2979ff&color=fff&size=128" class="avatar">
+                        <span class="level-badge">Lvl 5</span>
                     </div>
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill" id="xp-bar" style="width: 0%"></div>
+                    <h2 class="text-gradient">Neo Player</h2>
+                    <p class="text-sub">Classe: Arquiteto de Sistemas</p>
+                </div>
+
+                <div class="xp-section">
+                    <div class="flex-between text-sm">
+                        <span>XP Atual</span>
+                        <span class="text-neon" id="xp-display">450 / 1000</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill xp-fill" id="xp-bar" style="width: 45%"></div>
+                    </div>
+                </div>
+
+                <div class="streak-box">
+                    <i class="ri-fire-fill"></i>
+                    <span>12 Dias de Fogo (Streak)</span>
+                </div>
+            </div>
+
+            <div class="gemini-card">
+                <h3 class="card-title"><i class="ri-user-star-line"></i> Atributos</h3>
+                <div class="attributes-list">
+                    <div class="attr-item">
+                        <div class="flex-between mb-1">
+                            <span class="attr-label"><i class="ri-sword-line"></i> Disciplina</span>
+                            <span class="text-sub">Lvl 3</span>
+                        </div>
+                        <div class="progress-track small">
+                            <div class="progress-fill blue-fill" style="width: 70%"></div>
+                        </div>
+                    </div>
+                    <div class="attr-item">
+                        <div class="flex-between mb-1">
+                            <span class="attr-label"><i class="ri-heart-pulse-line"></i> Saúde</span>
+                            <span class="text-sub">Lvl 2</span>
+                        </div>
+                        <div class="progress-track small">
+                            <div class="progress-fill health-fill" style="width: 40%"></div>
+                        </div>
+                    </div>
+                    <div class="attr-item">
+                        <div class="flex-between mb-1">
+                            <span class="attr-label"><i class="ri-book-open-line"></i> Inteligência</span>
+                            <span class="text-sub">Lvl 5</span>
+                        </div>
+                        <div class="progress-track small">
+                            <div class="progress-fill intel-fill" style="width: 85%"></div>
+                        </div>
+                    </div>
+                    <div class="attr-item">
+                        <div class="flex-between mb-1">
+                            <span class="attr-label"><i class="ri-group-line"></i> Social</span>
+                            <span class="text-sub">Lvl 1</span>
+                        </div>
+                        <div class="progress-track small">
+                            <div class="progress-fill social-fill" style="width: 30%"></div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </header>
+        </aside>
 
-        <main id="main-content">
-            </main>
 
-        <nav class="bottom-nav">
-            <button class="nav-item active" onclick="navigate('dashboard')">
-                <span class="material-icons-round">dashboard</span>
-                <span>Início</span>
-            </button>
-            <button class="nav-item" onclick="navigate('habits')">
-                <span class="material-icons-round">check_circle</span>
-                <span>Hábitos</span>
-            </button>
-            <button class="nav-item" onclick="navigate('rpg')">
-                <span class="material-icons-round">person</span>
-                <span>Atributos</span>
-            </button>
-            <button class="nav-item" onclick="navigate('quests')">
-                <span class="material-icons-round">emoji_events</span>
-                <span>Missões</span>
-            </button>
-        </nav>
+        <main class="main-content">
+
+            <div class="motivational-box mb-20">
+                <h3 id="daily-quote">"A constância vence o talento." 🚀</h3>
+                <p class="text-sub">Complete 3 missões hoje para manter seu ritmo.</p>
+            </div>
+
+            <div class="quick-actions grid-3 mb-20">
+                <button class="action-btn"><i class="ri-flag-line"></i> Nova Meta</button>
+                <button class="action-btn"><i class="ri-calendar-check-line"></i> Novo Hábito</button>
+                <button class="action-btn outline"><i class="ri-bar-chart-box-line"></i> Registrar</button>
+            </div>
+
+            <div class="gemini-card">
+                <div class="flex-between mb-3">
+                    <h3 class="card-title">Missões do Dia</h3>
+                    <span class="text-neon" id="task-progress-text">0% Concluído</span>
+                </div>
+
+                <div class="progress-track mb-4">
+                    <div class="progress-fill day-fill" id="day-progress-bar" style="width: 0%"></div>
+                </div>
+
+                <div class="tasks-list">
+                    <div class="task-card">
+                        <div class="task-left">
+                            <label class="checkbox-wrapper">
+                                <input type="checkbox" onchange="toggleTask(this, 50)">
+                                <div class="custom-check"><i class="ri-check-line"></i></div>
+                            </label>
+                            <div class="task-info">
+                                <span class="task-name">Finalizar Front-end</span>
+                                <span class="task-meta">Produtividade • +50 XP</span>
+                            </div>
+                        </div>
+                        <span class="xp-badge">50 XP</span>
+                    </div>
+
+                    <div class="task-card">
+                        <div class="task-left">
+                            <label class="checkbox-wrapper">
+                                <input type="checkbox" onchange="toggleTask(this, 30)">
+                                <div class="custom-check"><i class="ri-check-line"></i></div>
+                            </label>
+                            <div class="task-info">
+                                <span class="task-name">Treino de Força</span>
+                                <span class="task-meta">Saúde • +30 XP</span>
+                            </div>
+                        </div>
+                        <span class="xp-badge">30 XP</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gemini-card">
+                <h3 class="card-title">Hábitos Diários</h3>
+                <div class="habits-list">
+                    <div class="habit-item">
+                        <div class="habit-icon"><i class="ri-drop-line"></i></div>
+                        <div class="habit-info">
+                            <span>Beber Água</span>
+                            <span class="text-sub text-xs">🔥 12 dias</span>
+                        </div>
+                        <button class="check-circle-btn"><i class="ri-check-line"></i></button>
+                    </div>
+                    <div class="habit-item">
+                        <div class="habit-icon"><i class="ri-book-line"></i></div>
+                        <div class="habit-info">
+                            <span>Ler 10 Páginas</span>
+                            <span class="text-sub text-xs">🔥 5 dias</span>
+                        </div>
+                        <button class="check-circle-btn"><i class="ri-check-line"></i></button>
+                    </div>
+                    <div class="habit-item">
+                        <div class="habit-icon"><i class="ri-moon-line"></i></div>
+                        <div class="habit-info">
+                            <span>Dormir cedo</span>
+                            <span class="text-sub text-xs">🔥 2 dias</span>
+                        </div>
+                        <button class="check-circle-btn"><i class="ri-check-line"></i></button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+
+        <aside class="sidebar-right">
+
+            <div class="stats-grid grid-2 mb-20">
+                <div class="gemini-card mini-stat">
+                    <span class="text-sub text-xs">XP Hoje</span>
+                    <span class="stat-value text-neon" id="today-xp">0</span>
+                </div>
+                <div class="gemini-card mini-stat">
+                    <span class="text-sub text-xs">Metas</span>
+                    <span class="stat-value text-green" id="today-goals">0/2</span>
+                </div>
+                <div class="gemini-card mini-stat full-width">
+                    <span class="text-sub text-xs">Tempo Focado</span>
+                    <div class="flex-between">
+                        <span class="stat-value">3h 45m</span>
+                        <i class="ri-timer-flash-line text-neon"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gemini-card special-mission">
+                <div class="flex-between mb-2">
+                    <span class="mission-tag">Desafio Semanal</span>
+                    <i class="ri-trophy-fill text-yellow"></i>
+                </div>
+                <h4>Mestre do Código</h4>
+                <p class="text-sub text-sm mb-3">Faça commits em 5 dias diferentes.</p>
+                <div class="progress-track small mb-2">
+                    <div class="progress-fill yellow-fill" style="width: 60%"></div>
+                </div>
+                <span class="text-xs text-yellow">Recompensa: Badge Dourada</span>
+            </div>
+
+            <div class="gemini-card">
+                <h3 class="card-title text-sm">Histórico Recente</h3>
+                <ul class="history-list">
+                    <li>
+                        <i class="ri-check-double-line text-green"></i>
+                        <div>
+                            <span>Hábito Concluído</span>
+                            <span class="time">10:30</span>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="ri-add-circle-line text-neon"></i>
+                        <div>
+                            <span>Nova Meta Criada</span>
+                            <span class="time">09:15</span>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="ri-fire-line text-orange"></i>
+                        <div>
+                            <span>Streak Aumentado</span>
+                            <span class="time">Ontem</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+        </aside>
+
     </div>
 
     <script src="script.js"></script>
 </body>
+
 </html>
