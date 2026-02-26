@@ -4,239 +4,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini RPG Dashboard</title>
+    <title>Dashboard Notion - Gamificado e Firebase</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+    <div id="sync-status" class="sync-status text-sm">
+        <i class="ri-loader-4-line spin"></i> Conectando ao Banco de Dados...
+    </div>
 
     <div class="app-layout">
-
-        <aside class="sidebar-left">
-
-            <div class="gemini-card profile-card">
-                <div class="profile-header">
-                    <div class="avatar-container">
-                        <img src="https://ui-avatars.com/api/?name=Hero+Dev&background=2979ff&color=fff&size=128" class="avatar">
-                        <span class="level-badge">Lvl 5</span>
-                    </div>
-                    <h2 class="text-gradient">Neo Player</h2>
-                    <p class="text-sub">Classe: Arquiteto de Sistemas</p>
+        <aside class="sidebar">
+            <div class="profile-section">
+                <div class="avatar-container">
+                    <img src="https://ui-avatars.com/api/?name=Neo+Player&background=f1f1ef&color=37352f&size=128" class="avatar" alt="Avatar">
                 </div>
-
-                <div class="xp-section">
-                    <div class="flex-between text-sm">
-                        <span>XP Atual</span>
-                        <span class="text-neon" id="xp-display">450 / 1000</span>
-                    </div>
-                    <div class="progress-track">
-                        <div class="progress-fill xp-fill" id="xp-bar" style="width: 45%"></div>
-                    </div>
-                </div>
-
-                <div class="streak-box">
-                    <i class="ri-fire-fill"></i>
-                    <span>12 Dias de Fogo (Streak)</span>
+                <div class="profile-info">
+                    <h2 id="global-name">Neo Player</h2>
+                    <p class="text-sub" id="global-level-text">Lvl 1 • XP: 0</p>
                 </div>
             </div>
 
-            <div class="gemini-card">
-                <h3 class="card-title"><i class="ri-user-star-line"></i> Atributos</h3>
-                <div class="attributes-list">
-                    <div class="attr-item">
-                        <div class="flex-between mb-1">
-                            <span class="attr-label"><i class="ri-sword-line"></i> Disciplina</span>
-                            <span class="text-sub">Lvl 3</span>
-                        </div>
-                        <div class="progress-track small">
-                            <div class="progress-fill blue-fill" style="width: 70%"></div>
-                        </div>
-                    </div>
-                    <div class="attr-item">
-                        <div class="flex-between mb-1">
-                            <span class="attr-label"><i class="ri-heart-pulse-line"></i> Saúde</span>
-                            <span class="text-sub">Lvl 2</span>
-                        </div>
-                        <div class="progress-track small">
-                            <div class="progress-fill health-fill" style="width: 40%"></div>
-                        </div>
-                    </div>
-                    <div class="attr-item">
-                        <div class="flex-between mb-1">
-                            <span class="attr-label"><i class="ri-book-open-line"></i> Inteligência</span>
-                            <span class="text-sub">Lvl 5</span>
-                        </div>
-                        <div class="progress-track small">
-                            <div class="progress-fill intel-fill" style="width: 85%"></div>
-                        </div>
-                    </div>
-                    <div class="attr-item">
-                        <div class="flex-between mb-1">
-                            <span class="attr-label"><i class="ri-group-line"></i> Social</span>
-                            <span class="text-sub">Lvl 1</span>
-                        </div>
-                        <div class="progress-track small">
-                            <div class="progress-fill social-fill" style="width: 30%"></div>
-                        </div>
-                    </div>
+            <div class="sidebar-block">
+                <div class="flex-between text-sm mb-1">
+                    <span class="font-medium">Progresso do Nível</span>
+                    <span id="xp-display" class="text-sub">0 / 1000</span>
                 </div>
-            </div>
-        </aside>
-
-
-        <main class="main-content">
-
-            <div class="motivational-box mb-20">
-                <h3 id="daily-quote">"A constância vence o talento." 🚀</h3>
-                <p class="text-sub">Complete 3 missões hoje para manter seu ritmo.</p>
-            </div>
-
-            <div class="quick-actions grid-3 mb-20">
-                <button class="action-btn"><i class="ri-flag-line"></i> Nova Meta</button>
-                <button class="action-btn"><i class="ri-calendar-check-line"></i> Novo Hábito</button>
-                <button class="action-btn outline"><i class="ri-bar-chart-box-line"></i> Registrar</button>
-            </div>
-
-            <div class="gemini-card">
-                <div class="flex-between mb-3">
-                    <h3 class="card-title">Missões do Dia</h3>
-                    <span class="text-neon" id="task-progress-text">0% Concluído</span>
-                </div>
-
-                <div class="progress-track mb-4">
-                    <div class="progress-fill day-fill" id="day-progress-bar" style="width: 0%"></div>
-                </div>
-
-                <div class="tasks-list">
-                    <div class="task-card">
-                        <div class="task-left">
-                            <label class="checkbox-wrapper">
-                                <input type="checkbox" onchange="toggleTask(this, 50)">
-                                <div class="custom-check"><i class="ri-check-line"></i></div>
-                            </label>
-                            <div class="task-info">
-                                <span class="task-name">Finalizar Front-end</span>
-                                <span class="task-meta">Produtividade • +50 XP</span>
-                            </div>
-                        </div>
-                        <span class="xp-badge">50 XP</span>
-                    </div>
-
-                    <div class="task-card">
-                        <div class="task-left">
-                            <label class="checkbox-wrapper">
-                                <input type="checkbox" onchange="toggleTask(this, 30)">
-                                <div class="custom-check"><i class="ri-check-line"></i></div>
-                            </label>
-                            <div class="task-info">
-                                <span class="task-name">Treino de Força</span>
-                                <span class="task-meta">Saúde • +30 XP</span>
-                            </div>
-                        </div>
-                        <span class="xp-badge">30 XP</span>
-                    </div>
+                <div class="progress-track">
+                    <div class="progress-fill xp-fill" id="xp-bar" style="width: 0%"></div>
                 </div>
             </div>
 
-            <div class="gemini-card">
-                <h3 class="card-title">Hábitos Diários</h3>
-                <div class="habits-list">
-                    <div class="habit-item">
-                        <div class="habit-icon"><i class="ri-drop-line"></i></div>
-                        <div class="habit-info">
-                            <span>Beber Água</span>
-                            <span class="text-sub text-xs">🔥 12 dias</span>
-                        </div>
-                        <button class="check-circle-btn"><i class="ri-check-line"></i></button>
-                    </div>
-                    <div class="habit-item">
-                        <div class="habit-icon"><i class="ri-book-line"></i></div>
-                        <div class="habit-info">
-                            <span>Ler 10 Páginas</span>
-                            <span class="text-sub text-xs">🔥 5 dias</span>
-                        </div>
-                        <button class="check-circle-btn"><i class="ri-check-line"></i></button>
-                    </div>
-                    <div class="habit-item">
-                        <div class="habit-icon"><i class="ri-moon-line"></i></div>
-                        <div class="habit-info">
-                            <span>Dormir cedo</span>
-                            <span class="text-sub text-xs">🔥 2 dias</span>
-                        </div>
-                        <button class="check-circle-btn"><i class="ri-check-line"></i></button>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-
-        <aside class="sidebar-right">
-
-            <div class="stats-grid grid-2 mb-20">
-                <div class="gemini-card mini-stat">
-                    <span class="text-sub text-xs">XP Hoje</span>
-                    <span class="stat-value text-neon" id="today-xp">0</span>
-                </div>
-                <div class="gemini-card mini-stat">
-                    <span class="text-sub text-xs">Metas</span>
-                    <span class="stat-value text-green" id="today-goals">0/2</span>
-                </div>
-                <div class="gemini-card mini-stat full-width">
-                    <span class="text-sub text-xs">Tempo Focado</span>
-                    <div class="flex-between">
-                        <span class="stat-value">3h 45m</span>
-                        <i class="ri-timer-flash-line text-neon"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="gemini-card special-mission">
-                <div class="flex-between mb-2">
-                    <span class="mission-tag">Desafio Semanal</span>
-                    <i class="ri-trophy-fill text-yellow"></i>
-                </div>
-                <h4>Mestre do Código</h4>
-                <p class="text-sub text-sm mb-3">Faça commits em 5 dias diferentes.</p>
-                <div class="progress-track small mb-2">
-                    <div class="progress-fill yellow-fill" style="width: 60%"></div>
-                </div>
-                <span class="text-xs text-yellow">Recompensa: Badge Dourada</span>
-            </div>
-
-            <div class="gemini-card">
-                <h3 class="card-title text-sm">Histórico Recente</h3>
-                <ul class="history-list">
+            <div class="sidebar-block">
+                <h3 class="sidebar-title">Estatísticas de Hoje</h3>
+                <ul class="stats-list">
                     <li>
-                        <i class="ri-check-double-line text-green"></i>
-                        <div>
-                            <span>Hábito Concluído</span>
-                            <span class="time">10:30</span>
-                        </div>
+                        <i class="ri-arrow-up-circle-line text-blue"></i>
+                        <span>XP Ganho:</span>
+                        <strong id="today-xp" style="margin-left: auto;">0</strong>
                     </li>
                     <li>
-                        <i class="ri-add-circle-line text-neon"></i>
-                        <div>
-                            <span>Nova Meta Criada</span>
-                            <span class="time">09:15</span>
-                        </div>
-                    </li>
-                    <li>
-                        <i class="ri-fire-line text-orange"></i>
-                        <div>
-                            <span>Streak Aumentado</span>
-                            <span class="time">Ontem</span>
-                        </div>
+                        <i class="ri-check-line text-green"></i>
+                        <span>Metas Diárias:</span>
+                        <strong id="today-goals" style="margin-left: auto;">0/0</strong>
                     </li>
                 </ul>
             </div>
 
+            <div class="sidebar-block">
+                <div class="flex-between mb-1" style="align-items: center;">
+                    <h3 class="sidebar-title" style="margin:0;">Meus Atributos</h3>
+                    <button class="icon-btn" id="btn-open-attr" title="Novo Atributo"><i class="ri-add-line"></i></button>
+                </div>
+                <div id="attributes-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                    </div>
+            </div>
+
+            <div class="sidebar-block history-block">
+                <h3 class="sidebar-title">Histórico Recente</h3>
+                <ul class="history-list" id="history-container">
+                    </ul>
+            </div>
         </aside>
 
+        <main class="main-content">
+            <header class="page-header">
+                <h1 contenteditable="true" class="page-title" spellcheck="false">Meu Dashboard</h1>
+                <p id="daily-quote" class="page-description">"A evolução acontece todos os dias."</p>
+            </header>
+
+            <div class="quick-actions">
+                <button class="action-btn" id="btn-open-task"><i class="ri-add-line"></i> Nova Missão</button>
+                <button class="action-btn" id="btn-open-habit"><i class="ri-add-line"></i> Novo Hábito</button>
+                <button class="action-btn" id="btn-open-activity"><i class="ri-timer-line"></i> Nova Atividade</button>
+                <button class="action-btn" id="btn-open-log"><i class="ri-edit-line"></i> Registrar Ação</button>
+            </div>
+
+            <section class="content-section">
+                <div class="section-header">
+                    <h2><i class="ri-timer-flash-line"></i> Atividades (Com Prazo)</h2>
+                </div>
+                <div class="tasks-list" id="activities-container"></div>
+            </section>
+
+            <section class="content-section">
+                <div class="section-header">
+                    <h2><i class="ri-checkbox-multiple-line"></i> Missões do Dia</h2>
+                    <span id="task-progress-text" class="text-sub text-sm">0% Concluído</span>
+                </div>
+                <div class="progress-track mb-3">
+                    <div class="progress-fill blue-fill" id="day-progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="tasks-list" id="tasks-container"></div>
+            </section>
+
+            <section class="content-section">
+                <div class="section-header">
+                    <h2><i class="ri-loop-left-line"></i> Hábitos Diários</h2>
+                </div>
+                <div class="habits-list" id="habits-container"></div>
+            </section>
+        </main>
     </div>
 
-    <script src="script.js"></script>
+    <div id="modal-attr" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Novo Atributo (Skill)</h3>
+            <p class="text-sub text-sm mb-3">Crie um atributo para evoluir (ex: Programação, Saúde, Leitura).</p>
+            <div class="input-group">
+                <input type="text" id="input-attr-name" class="notion-input" placeholder="Nome do atributo..." autocomplete="off">
+                <span class="error-msg" id="error-attr-name"></span>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel close-attr">Cancelar</button>
+                <button class="btn-primary" id="save-attr">Criar Atributo</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="modal-task" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Criar Missão</h3>
+            <div class="input-group">
+                <input type="text" id="input-task-name" class="notion-input" placeholder="Nome da tarefa..." autocomplete="off">
+                <span class="error-msg" id="error-task-name"></span>
+            </div>
+            <div class="input-group">
+                <input type="number" id="input-task-xp" class="notion-input" placeholder="Recompensa de XP (Ex: 50)" min="1">
+                <span class="error-msg" id="error-task-xp"></span>
+            </div>
+            <div class="input-group">
+                <select id="input-task-attr" class="notion-input">
+                    </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel close-task">Cancelar</button>
+                <button class="btn-primary" id="save-task">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-habit" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Novo Hábito</h3>
+            <div class="input-group">
+                <input type="text" id="input-habit-name" class="notion-input" placeholder="Nome do hábito..." autocomplete="off">
+                <span class="error-msg" id="error-habit-name"></span>
+            </div>
+            <div class="input-group">
+                <select id="input-habit-attr" class="notion-input">
+                    </select>
+                <p class="text-sub text-sm mt-1">Ganha 10 XP por check.</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel close-habit">Cancelar</button>
+                <button class="btn-primary" id="save-habit">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-activity" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Nova Atividade com Prazo</h3>
+            <div class="input-group">
+                <input type="text" id="input-act-name" class="notion-input" placeholder="Nome da atividade..." autocomplete="off">
+                <span class="error-msg" id="error-act-name"></span>
+            </div>
+            <div class="input-group">
+                <label class="text-sub text-sm" style="display:block; margin-bottom:4px;">Prazo de Entrega:</label>
+                <input type="datetime-local" id="input-act-date" class="notion-input">
+                <span class="error-msg" id="error-act-date"></span>
+            </div>
+            <div class="input-group">
+                <select id="input-act-diff" class="notion-input">
+                    <option value="" disabled selected>Nível de Dificuldade</option>
+                    <option value="easy">Fácil (30 XP)</option>
+                    <option value="medium">Médio (60 XP)</option>
+                    <option value="hard">Difícil (100 XP)</option>
+                </select>
+                <span class="error-msg" id="error-act-diff"></span>
+            </div>
+            <div class="input-group">
+                <select id="input-act-attr" class="notion-input">
+                    </select>
+            </div>
+            <p class="text-sub text-sm" style="color: var(--red);">* Atrasos resultam em perda do XP correspondente.</p>
+            <div class="modal-actions">
+                <button class="btn-cancel close-activity">Cancelar</button>
+                <button class="btn-primary" id="save-activity">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-log" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Registro Manual</h3>
+            <div class="input-group">
+                <input type="text" id="input-log-desc" class="notion-input" placeholder="O que você fez agora?" autocomplete="off">
+                <span class="error-msg" id="error-log-desc"></span>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel close-log">Cancelar</button>
+                <button class="btn-primary" id="save-log">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
 </body>
 
 </html>
