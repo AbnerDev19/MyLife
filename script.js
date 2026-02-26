@@ -1,3 +1,4 @@
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -5,12 +6,13 @@ import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/fireb
 // 1. CONFIGURAÇÃO FIREBASE (Vercel)
 // =========================================
 const firebaseConfig = {
-    apiKey: "COLOQUE_AQUI_SUA_API_KEY", // <--- Substitua aqui
-    authDomain: "seu-projeto.firebaseapp.com",
-    projectId: "seu-projeto",
-    storageBucket: "seu-projeto.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef"
+  apiKey: "AIzaSyDWhGtdl9A9CeWFLX1ZKN3ORju0K_6Up9g",
+  authDomain: "myli-30303.firebaseapp.com",
+  projectId: "myli-30303",
+  storageBucket: "myli-30303.firebasestorage.app",
+  messagingSenderId: "861514681124",
+  appId: "1:861514681124:web:b33c9a52a08260c48f41b1",
+  measurementId: "G-XSFF822HWW"
 };
 
 // Verifica se as chaves foram preenchidas ou não.
@@ -577,3 +579,4 @@ document.addEventListener('DOMContentLoaded', () => {
     loadState(); // Carega LocalStorage ou Firebase
     setInterval(checkOverdueActivities, 60000); // Valida atrasos a cada minuto
 });
+
