@@ -4,9 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Notion - Gamificado e Firebase</title>
+    <title>Dashboard Notion - Gamificado</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="fotos/mY.png">
 </head>
@@ -27,6 +28,15 @@
                     <p class="text-sub" id="global-level-text">Lvl 1 • XP: 0</p>
                 </div>
             </div>
+
+            <nav class="sidebar-menu">
+                <button class="menu-item active" onclick="switchView('dashboard')" id="nav-dashboard">
+                    <i class="ri-dashboard-line"></i> Dashboard
+                </button>
+                <button class="menu-item" onclick="switchView('study')" id="nav-study">
+                    <i class="ri-book-read-line"></i> Sala de Estudos
+                </button>
+            </nav>
 
             <div class="sidebar-block">
                 <div class="flex-between text-sm mb-1">
@@ -60,53 +70,100 @@
                     <button class="icon-btn" id="btn-open-attr" title="Novo Atributo"><i class="ri-add-line"></i></button>
                 </div>
                 <div id="attributes-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
-                    </div>
+                </div>
             </div>
 
             <div class="sidebar-block history-block">
                 <h3 class="sidebar-title">Histórico Recente</h3>
                 <ul class="history-list" id="history-container">
-                    </ul>
+                </ul>
             </div>
         </aside>
 
         <main class="main-content">
-            <header class="page-header">
-                <h1 contenteditable="true" class="page-title" spellcheck="false">Meu Dashboard</h1>
-                <p id="daily-quote" class="page-description">"A evolução acontece todos os dias."</p>
-            </header>
+            
+            <div id="view-dashboard" class="view-section active">
+                <header class="page-header">
+                    <h1 contenteditable="true" class="page-title" spellcheck="false">Meu Dashboard</h1>
+                    <p id="daily-quote" class="page-description">"A evolução acontece todos os dias."</p>
+                </header>
 
-            <div class="quick-actions">
-                <button class="action-btn" id="btn-open-task"><i class="ri-add-line"></i> Nova Missão</button>
-                <button class="action-btn" id="btn-open-habit"><i class="ri-add-line"></i> Novo Hábito</button>
-                <button class="action-btn" id="btn-open-activity"><i class="ri-timer-line"></i> Nova Atividade</button>
-                <button class="action-btn" id="btn-open-log"><i class="ri-edit-line"></i> Registrar Ação</button>
+                <div class="quick-actions">
+                    <button class="action-btn" id="btn-open-task"><i class="ri-add-line"></i> Nova Missão</button>
+                    <button class="action-btn" id="btn-open-habit"><i class="ri-add-line"></i> Novo Hábito</button>
+                    <button class="action-btn" id="btn-open-activity"><i class="ri-timer-line"></i> Nova Atividade</button>
+                    <button class="action-btn" id="btn-open-study"><i class="ri-add-circle-line"></i> Inserir Tempo Manual</button>
+                    <button class="action-btn" id="btn-open-log"><i class="ri-edit-line"></i> Registrar Ação</button>
+                </div>
+
+                <section class="content-section">
+                    <div class="section-header">
+                        <h2><i class="ri-timer-flash-line"></i> Atividades (Com Prazo)</h2>
+                    </div>
+                    <div class="tasks-list" id="activities-container"></div>
+                </section>
+
+                <section class="content-section">
+                    <div class="section-header">
+                        <h2><i class="ri-checkbox-multiple-line"></i> Missões do Dia</h2>
+                        <span id="task-progress-text" class="text-sub text-sm">0% Concluído</span>
+                    </div>
+                    <div class="progress-track mb-3">
+                        <div class="progress-fill blue-fill" id="day-progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div class="tasks-list" id="tasks-container"></div>
+                </section>
+
+                <section class="content-section">
+                    <div class="section-header">
+                        <h2><i class="ri-loop-left-line"></i> Hábitos Diários</h2>
+                    </div>
+                    <div class="habits-list" id="habits-container"></div>
+                </section>
             </div>
 
-            <section class="content-section">
-                <div class="section-header">
-                    <h2><i class="ri-timer-flash-line"></i> Atividades (Com Prazo)</h2>
-                </div>
-                <div class="tasks-list" id="activities-container"></div>
-            </section>
+            <div id="view-study" class="view-section">
+                <header class="page-header">
+                    <h1 class="page-title">Sala de Estudos</h1>
+                    <p class="page-description">Foque no aprendizado. O tempo estudado gera XP automático!</p>
+                </header>
 
-            <section class="content-section">
-                <div class="section-header">
-                    <h2><i class="ri-checkbox-multiple-line"></i> Missões do Dia</h2>
-                    <span id="task-progress-text" class="text-sub text-sm">0% Concluído</span>
+                <div class="study-stats-grid">
+                    <div class="study-card">
+                        <h4>Sequência de Estudos</h4>
+                        <div class="big-number"><span id="streak-count" class="text-orange">0</span> Dias Seguidos</div>
+                        <div class="streak-days" id="streak-days-container">
+                            </div>
+                    </div>
+                    <div class="study-card">
+                        <h4>Tempo Total Estudado</h4>
+                        <div class="big-number" id="total-study-time">0h 0m</div>
+                        <p class="text-sub text-sm mt-1">Sua dedicação acumulada.</p>
+                    </div>
                 </div>
-                <div class="progress-track mb-3">
-                    <div class="progress-fill blue-fill" id="day-progress-bar" style="width: 0%"></div>
-                </div>
-                <div class="tasks-list" id="tasks-container"></div>
-            </section>
 
-            <section class="content-section">
-                <div class="section-header">
-                    <h2><i class="ri-loop-left-line"></i> Hábitos Diários</h2>
+                <div class="timer-box">
+                    <input type="text" id="timer-subject-input" class="notion-input" style="max-width: 300px; margin: 0 auto; text-align: center; font-size: 1.1rem;" placeholder="O que você vai estudar agora?" autocomplete="off">
+                    <div class="timer-display" id="timer-display">00:00:00</div>
+                    <p class="text-sub text-sm">Você ganhará 1 XP por cada minuto completo.</p>
+                    
+                    <div class="timer-controls">
+                        <button class="timer-btn btn-play" id="btn-timer-play" title="Iniciar"><i class="ri-play-fill"></i></button>
+                        <button class="timer-btn btn-pause" id="btn-timer-pause" title="Pausar"><i class="ri-pause-fill"></i></button>
+                        <button class="timer-btn btn-stop" id="btn-timer-stop" title="Finalizar e Salvar"><i class="ri-stop-fill"></i></button>
+                    </div>
                 </div>
-                <div class="habits-list" id="habits-container"></div>
-            </section>
+
+                <section class="content-section">
+                    <div class="section-header">
+                        <h2><i class="ri-bar-chart-box-line"></i> Desempenho por Disciplina (Minutos)</h2>
+                    </div>
+                    <div style="position: relative; height: 300px; width: 100%; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 16px;">
+                        <canvas id="studyChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
         </main>
     </div>
 
@@ -209,6 +266,25 @@
             <div class="modal-actions">
                 <button class="btn-cancel close-log">Cancelar</button>
                 <button class="btn-primary" id="save-log">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-study" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Adicionar Tempo Manual</h3>
+            <div class="input-group">
+                <input type="text" id="input-study-subject" class="notion-input" placeholder="Matéria (ex: Programação, Inglês)..." autocomplete="off">
+                <span class="error-msg" id="error-study-subject"></span>
+            </div>
+            <div class="input-group">
+                <input type="number" id="input-study-time" class="notion-input" placeholder="Tempo estudado (em minutos)" min="1">
+                <span class="error-msg" id="error-study-time"></span>
+                <p class="text-sub text-sm mt-1">Ganha 1 XP por cada minuto estudado!</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel close-study">Cancelar</button>
+                <button class="btn-primary" id="save-study">Registrar Estudo</button>
             </div>
         </div>
     </div>

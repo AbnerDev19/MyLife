@@ -1,4 +1,3 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -15,7 +14,6 @@ const firebaseConfig = {
   measurementId: "G-XSFF822HWW"
 };
 
-// Verifica se as chaves foram preenchidas ou não.
 const isFirebaseConfigured = firebaseConfig.apiKey !== "COLOQUE_AQUI_SUA_API_KEY";
 let db = null;
 const DOC_ID = "meu_rpg_pessoal";
@@ -32,11 +30,12 @@ let appState = {
     xpTotal: 0,
     dailyXp: 0,
     lastDate: new Date().toDateString(),
-    attributes: [], // Gamificação Dinâmica [{id, name, xp, level}]
+    attributes: [],
     tasks: [],
     habits: [],
     activities: [],
-    history: []
+    history: [],
+    studySessions: []
 };
 
 const difficultyMap = {
@@ -45,14 +44,12 @@ const difficultyMap = {
     'hard': { label: 'Difícil', xp: 100, colorClass: 'badge-hard' }
 };
 
-// Utilitário de XSS seguro
 function escapeHTML(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
 }
 
-// Tratamento de Erros de UI
 function showError(inputId, message) {
     const errorEl = document.getElementById(`error-${inputId}`);
     if (errorEl) { errorEl.textContent = message; errorEl.classList.add('active'); }
@@ -63,6 +60,15 @@ function hideErrors() {
 function checkDuplicate(name, list) {
     return list.some(item => item.name.toLowerCase() === name.toLowerCase());
 }
+
+// NAVEGAÇÃO ENTRE ABAS
+window.switchView = function(viewName) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById(`view-${viewName}`).classList.add('active');
+    document.getElementById(`nav-${viewName}`).classList.add('active');
+};
 
 // =========================================
 // 3. PERSISTÊNCIA (FIREBASE + LOCALSTORAGE FALLBACK)
@@ -76,12 +82,12 @@ async function loadState() {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 appState = { ...appState, ...data };
-                // Assegurar arrays caso o DB venha mal formatado
                 if(!appState.attributes) appState.attributes = [];
                 if(!appState.tasks) appState.tasks = [];
                 if(!appState.habits) appState.habits = [];
                 if(!appState.activities) appState.activities = [];
                 if(!appState.history) appState.history = [];
+                if(!appState.studySessions) appState.studySessions = [];
             }
             showSyncStatus("Banco sincronizado", "success");
         } catch (e) {
@@ -98,7 +104,7 @@ async function loadState() {
     
     resetIfNewDay();
     checkOverdueActivities();
-    saveAndRenderAll(false); // Renderiza sem forçar salvamento extra na carga
+    saveAndRenderAll(false);
 }
 
 function fallbackLoad() {
@@ -160,7 +166,6 @@ function checkOverdueActivities() {
     if (changed) saveAndRenderAll();
 }
 
-// Aplica XP num atributo customizado
 function applyAttributeXp(attrId, xpGained, isSubtract = false) {
     if(!attrId || attrId === "none") return;
     const attr = appState.attributes.find(a => a.id === attrId);
@@ -170,7 +175,7 @@ function applyAttributeXp(attrId, xpGained, isSubtract = false) {
         } else {
             attr.xp += xpGained;
         }
-        attr.level = Math.floor(attr.xp / 100) + 1; // 1 level a cada 100 XP
+        attr.level = Math.floor(attr.xp / 100) + 1;
     }
 }
 
@@ -330,8 +335,112 @@ function renderHistory() {
     });
 }
 
+// =========================================
+// SALA DE ESTUDOS - LÓGICA E RENDERIZAÇÃO
+// =========================================
+let studyChartInstance = null;
+
+function renderStudyArea() {
+    // 1. Gráfico
+    const canvas = document.getElementById('studyChart');
+    if (canvas) {
+        const subjectData = {};
+        let totalMinutesStudied = 0;
+        
+        appState.studySessions.forEach(session => {
+            if (!subjectData[session.subject]) subjectData[session.subject] = 0;
+            subjectData[session.subject] += session.duration;
+            totalMinutesStudied += session.duration;
+        });
+
+        // 2. Tempo Total
+        const hours = Math.floor(totalMinutesStudied / 60);
+        const mins = totalMinutesStudied % 60;
+        document.getElementById('total-study-time').innerText = `${hours}h ${mins}m`;
+
+        const labels = Object.keys(subjectData);
+        const data = Object.values(subjectData);
+
+        if (studyChartInstance) studyChartInstance.destroy();
+
+        const ctx = canvas.getContext('2d');
+        Chart.defaults.color = '#787774';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        studyChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels.length > 0 ? labels : ['Nenhum dado'],
+                datasets: [{
+                    label: 'Minutos Estudados',
+                    data: data.length > 0 ? data : [0],
+                    backgroundColor: '#2383e2',
+                    borderRadius: 4,
+                    barPercentage: 0.5
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, grid: { color: '#e9e9e7' } }, x: { grid: { display: false } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    // 3. Sequência (Streak) dos últimos 7 dias
+    calculateStudyStreak();
+}
+
+function calculateStudyStreak() {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    // Obter dias únicos estudados
+    const studiedDays = new Set(appState.studySessions.map(session => {
+        const d = new Date(session.timestamp);
+        d.setHours(0,0,0,0);
+        return d.getTime();
+    }));
+
+    // Calcular quantos dias seguidos a partir de hoje (ou ontem)
+    let streakCount = 0;
+    let checkDate = new Date(today.getTime());
+    
+    // Se não estudou hoje, checa se estudou ontem para manter a ofensiva
+    if (!studiedDays.has(checkDate.getTime())) {
+        checkDate.setDate(checkDate.getDate() - 1);
+    }
+    
+    while(studiedDays.has(checkDate.getTime())) {
+        streakCount++;
+        checkDate.setDate(checkDate.getDate() - 1);
+    }
+    
+    document.getElementById('streak-count').innerText = streakCount;
+
+    // Renderizar blocos dos últimos 7 dias
+    const streakContainer = document.getElementById('streak-days-container');
+    if(streakContainer) {
+        streakContainer.innerHTML = '';
+        const dayNames = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+        
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today.getTime());
+            d.setDate(d.getDate() - i);
+            const isStudied = studiedDays.has(d.getTime());
+            
+            const div = document.createElement('div');
+            div.className = `streak-day ${isStudied ? 'active' : ''}`;
+            div.innerText = dayNames[d.getDay()];
+            
+            if(isStudied) div.innerHTML = `<i class="ri-check-line"></i>`;
+            
+            streakContainer.appendChild(div);
+        }
+    }
+}
+
 function updateUI() {
-    // 1000 XP por level Global
     const globalLevel = Math.floor(appState.xpTotal / 1000) + 1;
     const currentGlobalXp = appState.xpTotal % 1000;
     const xpPercent = Math.min((currentGlobalXp / 1000) * 100, 100);
@@ -364,8 +473,90 @@ function saveAndRenderAll(doSave = true) {
     renderTasks();
     renderHabits();
     renderHistory();
+    renderStudyArea();
     updateUI();
 }
+
+// =========================================
+// CRONÔMETRO LÓGICA
+// =========================================
+let timerInterval = null;
+let timerSeconds = 0;
+let isTimerRunning = false;
+
+function formatTime(totalSeconds) {
+    const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const s = String(totalSeconds % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btnPlay = document.getElementById('btn-timer-play');
+    const btnPause = document.getElementById('btn-timer-pause');
+    const btnStop = document.getElementById('btn-timer-stop');
+    const display = document.getElementById('timer-display');
+    const subjectInput = document.getElementById('timer-subject-input');
+
+    btnPlay.addEventListener('click', () => {
+        if (!subjectInput.value.trim()) {
+            alert('Por favor, digite o que você vai estudar antes de iniciar.');
+            subjectInput.focus();
+            return;
+        }
+        isTimerRunning = true;
+        btnPlay.style.display = 'none';
+        btnPause.style.display = 'block';
+        btnStop.style.display = 'block';
+        subjectInput.disabled = true;
+
+        timerInterval = setInterval(() => {
+            timerSeconds++;
+            display.innerText = formatTime(timerSeconds);
+        }, 1000);
+    });
+
+    btnPause.addEventListener('click', () => {
+        isTimerRunning = false;
+        clearInterval(timerInterval);
+        btnPlay.style.display = 'block';
+        btnPause.style.display = 'none';
+    });
+
+    btnStop.addEventListener('click', () => {
+        isTimerRunning = false;
+        clearInterval(timerInterval);
+        
+        const minutesStudied = Math.floor(timerSeconds / 60);
+        const subject = subjectInput.value.trim();
+
+        if (minutesStudied >= 1) {
+            // Salvar
+            appState.studySessions.push({
+                id: 'std_' + Date.now(),
+                subject: subject,
+                duration: minutesStudied,
+                timestamp: Date.now()
+            });
+            appState.xpTotal += minutesStudied;
+            appState.dailyXp += minutesStudied;
+            addHistoryItem(`Estudou ${subject} (${minutesStudied} min) +${minutesStudied}XP`, "ri-book-read-line", "text-blue");
+            saveAndRenderAll();
+        } else {
+            alert('O tempo estudado foi inferior a 1 minuto, portanto não gerou XP.');
+        }
+
+        // Resetar UI Timer
+        timerSeconds = 0;
+        display.innerText = "00:00:00";
+        btnPlay.style.display = 'block';
+        btnPause.style.display = 'none';
+        btnStop.style.display = 'none';
+        subjectInput.disabled = false;
+        subjectInput.value = '';
+    });
+});
+
 
 // =========================================
 // 6. AÇÕES DO USUÁRIO
@@ -377,7 +568,6 @@ function addHistoryItem(text, icon = "ri-information-line", colorClass = "text-m
     if (appState.history.length > 30) appState.history.shift();
 }
 
-// Atributos
 window.addAttr = function(name) {
     if(checkDuplicate(name, appState.attributes)) return false;
     appState.attributes.push({ id: 'att_' + Date.now(), name, xp: 0, level: 1 });
@@ -391,7 +581,6 @@ window.removeAttr = function(id) {
     saveAndRenderAll();
 };
 
-// Atividades
 window.toggleActivity = function(id) {
     const act = appState.activities.find(a => a.id === id);
     if (!act || act.failed) return;
@@ -419,7 +608,6 @@ window.removeActivity = function(id) {
     saveAndRenderAll();
 };
 
-// Tarefas
 window.toggleTask = function(id) {
     const task = appState.tasks.find(t => t.id === id);
     if (!task) return;
@@ -447,7 +635,6 @@ window.removeTask = function(id) {
     saveAndRenderAll();
 };
 
-// Hábitos
 window.toggleHabit = function(id) {
     const habit = appState.habits.find(h => h.id === id);
     if (!habit) return;
@@ -476,7 +663,7 @@ window.removeHabit = function(id) {
 };
 
 // =========================================
-// 7. EVENTOS E INICIALIZAÇÃO
+// 7. EVENTOS E INICIALIZAÇÃO DOS MODAIS
 // =========================================
 function setupModals() {
     const modals = [
@@ -484,7 +671,8 @@ function setupModals() {
         { id: 'modal-task', btnOpen: 'btn-open-task', btnClose: '.close-task', saveBtn: 'save-task' },
         { id: 'modal-habit', btnOpen: 'btn-open-habit', btnClose: '.close-habit', saveBtn: 'save-habit' },
         { id: 'modal-activity', btnOpen: 'btn-open-activity', btnClose: '.close-activity', saveBtn: 'save-activity' },
-        { id: 'modal-log', btnOpen: 'btn-open-log', btnClose: '.close-log', saveBtn: 'save-log' }
+        { id: 'modal-log', btnOpen: 'btn-open-log', btnClose: '.close-log', saveBtn: 'save-log' },
+        { id: 'modal-study', btnOpen: 'btn-open-study', btnClose: '.close-study', saveBtn: 'save-study' } 
     ];
 
     modals.forEach(m => {
@@ -571,12 +759,37 @@ function setupModals() {
         addHistoryItem(desc, "ri-edit-line", "text-main"); saveAndRenderAll();
         document.querySelector('.close-log').click();
     });
+
+    document.getElementById('save-study').addEventListener('click', () => {
+        hideErrors();
+        const subject = document.getElementById('input-study-subject').value.trim();
+        const timeStr = document.getElementById('input-study-time').value;
+        const time = parseInt(timeStr);
+        let valid = true;
+        
+        if (!subject) { showError('study-subject', 'A matéria é obrigatória.'); valid = false; }
+        if (!timeStr || isNaN(time) || time <= 0) { showError('study-time', 'Insira um tempo válido (minutos).'); valid = false; }
+
+        if (valid) {
+            appState.studySessions.push({
+                id: 'std_' + Date.now(),
+                subject: subject,
+                duration: time,
+                timestamp: Date.now()
+            });
+
+            appState.xpTotal += time;
+            appState.dailyXp += time;
+            addHistoryItem(`Estudou ${subject} por ${time} min (+${time} XP)`, "ri-book-read-line", "text-blue");
+            saveAndRenderAll();
+            document.querySelector('.close-study').click();
+        }
+    });
 }
 
 // Start
 document.addEventListener('DOMContentLoaded', () => {
     setupModals();
-    loadState(); // Carega LocalStorage ou Firebase
-    setInterval(checkOverdueActivities, 60000); // Valida atrasos a cada minuto
+    loadState();
+    setInterval(checkOverdueActivities, 60000); 
 });
-
