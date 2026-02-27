@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // =========================================
-// 1. CONFIGURAÇÃO FIREBASE (Vercel)
+// 1. CONFIGURAÇÃO FIREBASE
 // =========================================
 const firebaseConfig = {
   apiKey: "AIzaSyDWhGtdl9A9CeWFLX1ZKN3ORju0K_6Up9g",
@@ -35,7 +35,9 @@ let appState = {
     habits: [],
     activities: [],
     history: [],
-    studySessions: []
+    studySessions: [],
+    subjects: [], // Matérias criadas
+    dailyStudyGoal: 60 // Meta em minutos
 };
 
 const difficultyMap = {
@@ -45,11 +47,8 @@ const difficultyMap = {
 };
 
 function escapeHTML(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    const div = document.createElement('div'); div.textContent = str; return div.innerHTML;
 }
-
 function showError(inputId, message) {
     const errorEl = document.getElementById(`error-${inputId}`);
     if (errorEl) { errorEl.textContent = message; errorEl.classList.add('active'); }
@@ -61,17 +60,15 @@ function checkDuplicate(name, list) {
     return list.some(item => item.name.toLowerCase() === name.toLowerCase());
 }
 
-// NAVEGAÇÃO ENTRE ABAS
 window.switchView = function(viewName) {
     document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-    
     document.getElementById(`view-${viewName}`).classList.add('active');
     document.getElementById(`nav-${viewName}`).classList.add('active');
 };
 
 // =========================================
-// 3. PERSISTÊNCIA (FIREBASE + LOCALSTORAGE FALLBACK)
+// 3. PERSISTÊNCIA
 // =========================================
 async function loadState() {
     showSyncStatus("Carregando...", "active");
@@ -88,50 +85,32 @@ async function loadState() {
                 if(!appState.activities) appState.activities = [];
                 if(!appState.history) appState.history = [];
                 if(!appState.studySessions) appState.studySessions = [];
+                if(!appState.subjects) appState.subjects = [];
+                if(!appState.dailyStudyGoal) appState.dailyStudyGoal = 60;
             }
             showSyncStatus("Banco sincronizado", "success");
         } catch (e) {
-            console.error("Erro no Firebase:", e);
-            fallbackLoad();
-            showSyncStatus("Modo Local (Erro BD)", "error");
+            console.error("Erro no Firebase:", e); fallbackLoad(); showSyncStatus("Modo Local (Erro BD)", "error");
         }
     } else {
-        fallbackLoad();
-        showSyncStatus("Modo Offline (Configure as Chaves)", "error");
+        fallbackLoad(); showSyncStatus("Modo Offline (Configure as Chaves)", "error");
     }
-    
     setTimeout(() => document.getElementById('sync-status').classList.remove('active', 'success', 'error'), 3000);
-    
-    resetIfNewDay();
-    checkOverdueActivities();
-    saveAndRenderAll(false);
+    resetIfNewDay(); checkOverdueActivities(); saveAndRenderAll(false);
 }
 
 function fallbackLoad() {
     const saved = localStorage.getItem('notionRpgState');
-    if (saved) {
-        const parsed = JSON.parse(saved);
-        appState = { ...appState, ...parsed };
-    }
+    if (saved) { const parsed = JSON.parse(saved); appState = { ...appState, ...parsed }; }
 }
-
 async function saveState() {
     if (isFirebaseConfigured) {
-        try {
-            await setDoc(doc(db, "rpg_dashboard", DOC_ID), appState);
-        } catch (e) {
-            console.error("Erro ao salvar no Firebase:", e);
-            localStorage.setItem('notionRpgState', JSON.stringify(appState));
-        }
-    } else {
-        localStorage.setItem('notionRpgState', JSON.stringify(appState));
-    }
+        try { await setDoc(doc(db, "rpg_dashboard", DOC_ID), appState); } 
+        catch (e) { console.error("Erro ao salvar:", e); localStorage.setItem('notionRpgState', JSON.stringify(appState)); }
+    } else { localStorage.setItem('notionRpgState', JSON.stringify(appState)); }
 }
-
 function showSyncStatus(msg, statusClass) {
-    const el = document.getElementById('sync-status');
-    el.className = `sync-status ${statusClass}`;
-    el.innerHTML = msg;
+    const el = document.getElementById('sync-status'); el.className = `sync-status ${statusClass}`; el.innerHTML = msg;
 }
 
 // =========================================
@@ -142,43 +121,32 @@ function resetIfNewDay() {
     if (appState.lastDate !== today) {
         appState.dailyXp = 0;
         appState.tasks.forEach(task => task.completed = false);
-        appState.habits.forEach(habit => {
-            if (!habit.completedToday) habit.streak = 0; 
-            habit.completedToday = false; 
-        });
+        appState.habits.forEach(habit => { if (!habit.completedToday) habit.streak = 0; habit.completedToday = false; });
         appState.lastDate = today;
         addHistoryItem("Novo dia iniciado! Progresso diário resetado.", "ri-sun-line", "text-yellow");
         saveState();
     }
 }
-
 function checkOverdueActivities() {
-    const now = Date.now();
-    let changed = false;
+    const now = Date.now(); let changed = false;
     appState.activities.forEach(act => {
         if (!act.completed && !act.failed && now > act.dueDate) {
-            act.failed = true;
-            appState.xpTotal = Math.max(0, appState.xpTotal - act.xp);
+            act.failed = true; appState.xpTotal = Math.max(0, appState.xpTotal - act.xp);
             addHistoryItem(`Falhou no prazo: ${act.name} (-${act.xp} XP)`, "ri-close-circle-line", "text-red");
             changed = true;
         }
     });
     if (changed) saveAndRenderAll();
 }
-
 function applyAttributeXp(attrId, xpGained, isSubtract = false) {
     if(!attrId || attrId === "none") return;
     const attr = appState.attributes.find(a => a.id === attrId);
     if(attr) {
-        if (isSubtract) {
-            attr.xp = Math.max(0, attr.xp - xpGained);
-        } else {
-            attr.xp += xpGained;
-        }
+        if (isSubtract) attr.xp = Math.max(0, attr.xp - xpGained);
+        else attr.xp += xpGained;
         attr.level = Math.floor(attr.xp / 100) + 1;
     }
 }
-
 function getAttributeName(attrId) {
     if(!attrId || attrId === "none") return "";
     const attr = appState.attributes.find(a => a.id === attrId);
@@ -192,34 +160,27 @@ function populateAttributeSelects() {
     const selects = ['input-task-attr', 'input-habit-attr', 'input-act-attr'];
     const optionsHTML = `<option value="none" selected>Geral (Nenhum Atributo Específico)</option>` + 
         appState.attributes.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (Lvl ${a.level})</option>`).join('');
-    
-    selects.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.innerHTML = optionsHTML;
+    selects.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = optionsHTML; });
+}
+function renderSubjectSelect() {
+    const select = document.getElementById('timer-subject-select');
+    if (!select) return;
+    let options = '<option value="" disabled selected>Selecione a matéria...</option>';
+    appState.subjects.forEach(sub => {
+        options += `<option value="${sub.id}">${escapeHTML(sub.name)}</option>`;
     });
+    select.innerHTML = options;
 }
 
 function renderAttributes() {
-    const container = document.getElementById('attributes-container');
-    container.innerHTML = '';
-    
-    if (appState.attributes.length === 0) {
-        container.innerHTML = '<p class="text-sub text-sm">Nenhum atributo criado. Adicione um acima.</p>';
-        return;
-    }
-
+    const container = document.getElementById('attributes-container'); container.innerHTML = '';
+    if (appState.attributes.length === 0) { container.innerHTML = '<p class="text-sub text-sm">Nenhum atributo criado. Adicione um acima.</p>'; return; }
     appState.attributes.forEach(attr => {
         const progress = attr.xp % 100;
-        const div = document.createElement('div');
-        div.className = 'attr-item';
+        const div = document.createElement('div'); div.className = 'attr-item';
         div.innerHTML = `
-            <div class="flex-between text-sm mb-1">
-                <span class="font-medium">${escapeHTML(attr.name)}</span>
-                <span class="text-sub">Lvl ${attr.level}</span>
-            </div>
-            <div class="progress-track small">
-                <div class="progress-fill blue-fill" style="width: ${progress}%"></div>
-            </div>
+            <div class="flex-between text-sm mb-1"><span class="font-medium">${escapeHTML(attr.name)}</span><span class="text-sub">Lvl ${attr.level}</span></div>
+            <div class="progress-track small"><div class="progress-fill blue-fill" style="width: ${progress}%"></div></div>
             <button class="icon-btn delete attr-actions" onclick="window.removeAttr('${attr.id}')" title="Apagar"><i class="ri-close-line"></i></button>
         `;
         container.appendChild(div);
@@ -227,12 +188,8 @@ function renderAttributes() {
 }
 
 function renderActivities() {
-    const container = document.getElementById('activities-container');
-    container.innerHTML = '';
-    if (appState.activities.length === 0) {
-        container.innerHTML = '<p class="text-sub text-sm" style="padding: 8px 4px;">Nenhuma atividade agendada.</p>'; return;
-    }
-
+    const container = document.getElementById('activities-container'); container.innerHTML = '';
+    if (appState.activities.length === 0) { container.innerHTML = '<p class="text-sub text-sm" style="padding: 8px 4px;">Nenhuma atividade agendada.</p>'; return; }
     const sorted = [...appState.activities].sort((a, b) => a.dueDate - b.dueDate);
     sorted.forEach(act => {
         const diffInfo = difficultyMap[act.difficulty];
@@ -240,7 +197,6 @@ function renderActivities() {
         const attrName = getAttributeName(act.attrId);
         const attrBadge = attrName ? `<span class="item-attr-badge">${escapeHTML(attrName)}</span>` : '';
         const dateStr = new Date(act.dueDate).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-        
         const div = document.createElement('div');
         div.className = `notion-item ${act.completed ? 'completed' : ''} ${act.failed ? 'failed' : ''}`;
         div.innerHTML = `
@@ -248,121 +204,99 @@ function renderActivities() {
                 <input type="checkbox" ${act.completed ? 'checked' : ''} ${(act.failed || act.completed) ? 'disabled' : ''} onchange="window.toggleActivity('${act.id}')">
                 <div class="custom-check"><i class="ri-check-line"></i></div>
             </label>
-            <div class="item-info">
-                <span class="item-name">${safeName}</span>
-                <span class="badge ${diffInfo.colorClass}">${diffInfo.label}</span>
-                ${attrBadge}
-                <span class="item-meta ${act.failed ? 'text-red' : ''}"><i class="ri-time-line"></i> ${dateStr}</span>
+            <div class="item-info"><span class="item-name">${safeName}</span><span class="badge ${diffInfo.colorClass}">${diffInfo.label}</span>
+                ${attrBadge}<span class="item-meta ${act.failed ? 'text-red' : ''}"><i class="ri-time-line"></i> ${dateStr}</span>
                 <span class="item-meta">${act.failed ? '-' : '+'}${act.xp} XP</span>
             </div>
-            <div class="item-actions">
-                <button class="icon-btn delete" onclick="window.removeActivity('${act.id}')" title="Excluir"><i class="ri-delete-bin-line"></i></button>
-            </div>
+            <div class="item-actions"><button class="icon-btn delete" onclick="window.removeActivity('${act.id}')" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>
         `;
         container.appendChild(div);
     });
 }
 
 function renderTasks() {
-    const container = document.getElementById('tasks-container');
-    container.innerHTML = '';
-    if (appState.tasks.length === 0) {
-        container.innerHTML = '<p class="text-sub text-sm" style="padding: 8px 4px;">Planeje seu dia criando uma nova missão.</p>'; return;
-    }
+    const container = document.getElementById('tasks-container'); container.innerHTML = '';
+    if (appState.tasks.length === 0) { container.innerHTML = '<p class="text-sub text-sm" style="padding: 8px 4px;">Planeje seu dia criando uma nova missão.</p>'; return; }
     appState.tasks.forEach(task => {
         const attrName = getAttributeName(task.attrId);
         const attrBadge = attrName ? `<span class="item-attr-badge">${escapeHTML(attrName)}</span>` : '';
         const div = document.createElement('div');
         div.className = `notion-item ${task.completed ? 'completed' : ''}`;
         div.innerHTML = `
-            <label class="checkbox-wrapper">
-                <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="window.toggleTask('${task.id}')">
-                <div class="custom-check"><i class="ri-check-line"></i></div>
-            </label>
-            <div class="item-info">
-                <span class="item-name">${escapeHTML(task.name)}</span>
-                ${attrBadge}
-                <span class="item-meta">+${task.xp} XP</span>
-            </div>
-            <div class="item-actions">
-                <button class="icon-btn delete" onclick="window.removeTask('${task.id}')" title="Excluir"><i class="ri-delete-bin-line"></i></button>
-            </div>
+            <label class="checkbox-wrapper"><input type="checkbox" ${task.completed ? 'checked' : ''} onchange="window.toggleTask('${task.id}')"><div class="custom-check"><i class="ri-check-line"></i></div></label>
+            <div class="item-info"><span class="item-name">${escapeHTML(task.name)}</span>${attrBadge}<span class="item-meta">+${task.xp} XP</span></div>
+            <div class="item-actions"><button class="icon-btn delete" onclick="window.removeTask('${task.id}')" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>
         `;
         container.appendChild(div);
     });
 }
 
 function renderHabits() {
-    const container = document.getElementById('habits-container');
-    container.innerHTML = '';
-    if (appState.habits.length === 0) {
-        container.innerHTML = '<p class="text-sub text-sm" style="padding: 8px 4px;">Nenhum hábito rastreado.</p>'; return;
-    }
+    const container = document.getElementById('habits-container'); container.innerHTML = '';
+    if (appState.habits.length === 0) { container.innerHTML = '<p class="text-sub text-sm" style="padding: 8px 4px;">Nenhum hábito rastreado.</p>'; return; }
     appState.habits.forEach(habit => {
         const attrName = getAttributeName(habit.attrId);
         const attrBadge = attrName ? `<span class="item-attr-badge">${escapeHTML(attrName)}</span>` : '';
         const div = document.createElement('div');
         div.className = `notion-item ${habit.completedToday ? 'completed' : ''}`;
         div.innerHTML = `
-            <label class="checkbox-wrapper">
-                <input type="checkbox" ${habit.completedToday ? 'checked' : ''} onchange="window.toggleHabit('${habit.id}')">
-                <div class="custom-check"><i class="ri-check-line"></i></div>
-            </label>
-            <div class="item-info">
-                <span class="item-name">${escapeHTML(habit.name)}</span>
-                ${attrBadge}
-                <span class="item-meta" style="color: var(--orange); background: transparent; padding: 0;">🔥 ${habit.streak} dia(s)</span>
-            </div>
-            <div class="item-actions">
-                <button class="icon-btn delete" onclick="window.removeHabit('${habit.id}')" title="Excluir"><i class="ri-delete-bin-line"></i></button>
-            </div>
+            <label class="checkbox-wrapper"><input type="checkbox" ${habit.completedToday ? 'checked' : ''} onchange="window.toggleHabit('${habit.id}')"><div class="custom-check"><i class="ri-check-line"></i></div></label>
+            <div class="item-info"><span class="item-name">${escapeHTML(habit.name)}</span>${attrBadge}<span class="item-meta" style="color: var(--orange); background: transparent; padding: 0;">🔥 ${habit.streak} dia(s)</span></div>
+            <div class="item-actions"><button class="icon-btn delete" onclick="window.removeHabit('${habit.id}')" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>
         `;
         container.appendChild(div);
     });
 }
 
 function renderHistory() {
-    const container = document.getElementById('history-container');
-    container.innerHTML = '';
-    const recent = appState.history.slice(-6).reverse();
+    const container = document.getElementById('history-container'); container.innerHTML = '';
+    const recent = appState.history.slice(-10).reverse(); // Mostra as últimas 10
     if (recent.length === 0) { container.innerHTML = '<p class="text-sub text-sm">Sem histórico recente.</p>'; return; }
-
     recent.forEach(item => {
         const li = document.createElement('li');
-        li.innerHTML = `<i class="${item.icon} ${item.colorClass}"></i>
-            <div><span>${escapeHTML(item.text)}</span><span class="time">${item.time}</span></div>`;
+        li.innerHTML = `<i class="${item.icon} ${item.colorClass}"></i><div><span>${escapeHTML(item.text)}</span><span class="time">${item.time}</span></div>`;
         container.appendChild(li);
     });
 }
 
+function updateStudyGoalDisplay() {
+    const h = Math.floor(appState.dailyStudyGoal / 60);
+    const m = appState.dailyStudyGoal % 60;
+    const goalDisplay = document.getElementById('daily-study-goal-display');
+    if(goalDisplay) goalDisplay.innerText = `${h}h ${m}m`;
+}
+
 // =========================================
-// SALA DE ESTUDOS - LÓGICA E RENDERIZAÇÃO
+// SALA DE ESTUDOS - LÓGICA
 // =========================================
 let studyChartInstance = null;
 
 function renderStudyArea() {
-    // 1. Gráfico
+    updateStudyGoalDisplay();
     const canvas = document.getElementById('studyChart');
     if (canvas) {
         const subjectData = {};
+        const subjectColors = {};
         let totalMinutesStudied = 0;
         
         appState.studySessions.forEach(session => {
-            if (!subjectData[session.subject]) subjectData[session.subject] = 0;
+            if (!subjectData[session.subject]) {
+                subjectData[session.subject] = 0;
+                subjectColors[session.subject] = session.subjectColor || '#2383e2';
+            }
             subjectData[session.subject] += session.duration;
             totalMinutesStudied += session.duration;
         });
 
-        // 2. Tempo Total
         const hours = Math.floor(totalMinutesStudied / 60);
         const mins = totalMinutesStudied % 60;
         document.getElementById('total-study-time').innerText = `${hours}h ${mins}m`;
 
         const labels = Object.keys(subjectData);
         const data = Object.values(subjectData);
+        const bgColors = labels.map(label => subjectColors[label]);
 
         if (studyChartInstance) studyChartInstance.destroy();
-
         const ctx = canvas.getContext('2d');
         Chart.defaults.color = '#787774';
         Chart.defaults.font.family = "'Inter', sans-serif";
@@ -374,70 +308,55 @@ function renderStudyArea() {
                 datasets: [{
                     label: 'Minutos Estudados',
                     data: data.length > 0 ? data : [0],
-                    backgroundColor: '#2383e2',
+                    backgroundColor: bgColors.length > 0 ? bgColors : ['#e9e9e7'],
                     borderRadius: 4,
                     barPercentage: 0.5
                 }]
             },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true, grid: { color: '#e9e9e7' } }, x: { grid: { display: false } } },
-                plugins: { legend: { display: false } }
-            }
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#e9e9e7' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
         });
     }
-
-    // 3. Sequência (Streak) dos últimos 7 dias
     calculateStudyStreak();
 }
 
 function calculateStudyStreak() {
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    
-    // Obter dias únicos estudados
+    const today = new Date(); today.setHours(0,0,0,0);
     const studiedDays = new Set(appState.studySessions.map(session => {
-        const d = new Date(session.timestamp);
-        d.setHours(0,0,0,0);
-        return d.getTime();
+        const d = new Date(session.timestamp); d.setHours(0,0,0,0); return d.getTime();
     }));
 
-    // Calcular quantos dias seguidos a partir de hoje (ou ontem)
     let streakCount = 0;
     let checkDate = new Date(today.getTime());
-    
-    // Se não estudou hoje, checa se estudou ontem para manter a ofensiva
-    if (!studiedDays.has(checkDate.getTime())) {
-        checkDate.setDate(checkDate.getDate() - 1);
-    }
+    if (!studiedDays.has(checkDate.getTime())) checkDate.setDate(checkDate.getDate() - 1);
     
     while(studiedDays.has(checkDate.getTime())) {
         streakCount++;
         checkDate.setDate(checkDate.getDate() - 1);
     }
-    
     document.getElementById('streak-count').innerText = streakCount;
 
-    // Renderizar blocos dos últimos 7 dias
+    // Multiplicador de XP
+    let multiplier = 1.0 + (streakCount * 0.05);
+    if (multiplier > 2.0) multiplier = 2.0; 
+    
+    const multiplierDisplay = document.getElementById('streak-multiplier-text');
+    if(multiplierDisplay) multiplierDisplay.innerText = `${multiplier.toFixed(2)}x XP`;
+
     const streakContainer = document.getElementById('streak-days-container');
     if(streakContainer) {
         streakContainer.innerHTML = '';
         const dayNames = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-        
         for (let i = 6; i >= 0; i--) {
-            const d = new Date(today.getTime());
-            d.setDate(d.getDate() - i);
+            const d = new Date(today.getTime()); d.setDate(d.getDate() - i);
             const isStudied = studiedDays.has(d.getTime());
-            
             const div = document.createElement('div');
             div.className = `streak-day ${isStudied ? 'active' : ''}`;
             div.innerText = dayNames[d.getDay()];
-            
             if(isStudied) div.innerHTML = `<i class="ri-check-line"></i>`;
-            
             streakContainer.appendChild(div);
         }
     }
+    return multiplier;
 }
 
 function updateUI() {
@@ -467,22 +386,18 @@ function updateUI() {
 
 function saveAndRenderAll(doSave = true) {
     if(doSave) saveState();
-    populateAttributeSelects();
-    renderAttributes();
-    renderActivities();
-    renderTasks();
-    renderHabits();
-    renderHistory();
-    renderStudyArea();
-    updateUI();
+    populateAttributeSelects(); renderSubjectSelect();
+    renderAttributes(); renderActivities(); renderTasks(); renderHabits(); renderHistory(); renderStudyArea(); updateUI();
 }
 
 // =========================================
-// CRONÔMETRO LÓGICA
+// CRONÔMETRO & TEMPORIZADOR LÓGICA
 // =========================================
 let timerInterval = null;
 let timerSeconds = 0;
 let isTimerRunning = false;
+let currentTimerMode = 'stopwatch'; // 'stopwatch' ou 'countdown'
+let countdownTotalSeconds = 0;
 
 function formatTime(totalSeconds) {
     const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
@@ -496,170 +411,176 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPause = document.getElementById('btn-timer-pause');
     const btnStop = document.getElementById('btn-timer-stop');
     const display = document.getElementById('timer-display');
-    const subjectInput = document.getElementById('timer-subject-input');
+    const subjectSelect = document.getElementById('timer-subject-select');
+    const tabStopwatch = document.getElementById('tab-stopwatch');
+    const tabCountdown = document.getElementById('tab-countdown');
+    const countdownSetup = document.getElementById('countdown-setup');
+    const countdownInput = document.getElementById('countdown-input-minutes');
 
-    btnPlay.addEventListener('click', () => {
-        if (!subjectInput.value.trim()) {
-            alert('Por favor, digite o que você vai estudar antes de iniciar.');
-            subjectInput.focus();
-            return;
-        }
-        isTimerRunning = true;
-        btnPlay.style.display = 'none';
-        btnPause.style.display = 'block';
-        btnStop.style.display = 'block';
-        subjectInput.disabled = true;
-
-        timerInterval = setInterval(() => {
-            timerSeconds++;
-            display.innerText = formatTime(timerSeconds);
-        }, 1000);
+    tabStopwatch.addEventListener('click', () => {
+        if (isTimerRunning) return alert("Pause o relógio antes de trocar de modo.");
+        currentTimerMode = 'stopwatch';
+        tabStopwatch.classList.add('active'); tabCountdown.classList.remove('active');
+        countdownSetup.style.display = 'none'; resetTimerUI();
     });
 
-    btnPause.addEventListener('click', () => {
-        isTimerRunning = false;
-        clearInterval(timerInterval);
-        btnPlay.style.display = 'block';
-        btnPause.style.display = 'none';
+    tabCountdown.addEventListener('click', () => {
+        if (isTimerRunning) return alert("Pause o relógio antes de trocar de modo.");
+        currentTimerMode = 'countdown';
+        tabCountdown.classList.add('active'); tabStopwatch.classList.remove('active');
+        countdownSetup.style.display = 'block'; resetTimerUI();
     });
 
-    btnStop.addEventListener('click', () => {
-        isTimerRunning = false;
-        clearInterval(timerInterval);
-        
-        const minutesStudied = Math.floor(timerSeconds / 60);
-        const subject = subjectInput.value.trim();
-
+    function finishSession(minutesStudied, subjectId) {
         if (minutesStudied >= 1) {
-            // Salvar
+            const subject = appState.subjects.find(s => s.id === subjectId);
+            const subjectName = subject ? subject.name : 'Estudo Geral';
+            const multiplier = calculateStudyStreak() || 1;
+            
+            // Garantindo o cálculo exato do XP sem erros decimais
+            const xpGained = Math.floor(minutesStudied * multiplier);
+
             appState.studySessions.push({
                 id: 'std_' + Date.now(),
-                subject: subject,
+                subject: subjectName,
+                subjectColor: subject ? subject.color : '#2383e2',
                 duration: minutesStudied,
                 timestamp: Date.now()
             });
-            appState.xpTotal += minutesStudied;
-            appState.dailyXp += minutesStudied;
-            addHistoryItem(`Estudou ${subject} (${minutesStudied} min) +${minutesStudied}XP`, "ri-book-read-line", "text-blue");
+            appState.xpTotal += xpGained;
+            appState.dailyXp += xpGained;
+            
+            const subjTag = `<span class="subject-badge" style="background-color: ${subject ? subject.color : '#2383e2'}">${escapeHTML(subjectName)}</span>`;
+            addHistoryItem(`Estudou ${subjTag} (${minutesStudied} min) +${xpGained}XP 🔥`, "ri-book-read-line", "text-yellow");
             saveAndRenderAll();
         } else {
             alert('O tempo estudado foi inferior a 1 minuto, portanto não gerou XP.');
         }
+        resetTimerUI();
+    }
 
-        // Resetar UI Timer
-        timerSeconds = 0;
-        display.innerText = "00:00:00";
-        btnPlay.style.display = 'block';
-        btnPause.style.display = 'none';
-        btnStop.style.display = 'none';
-        subjectInput.disabled = false;
-        subjectInput.value = '';
+    function resetTimerUI() {
+        timerSeconds = 0; countdownTotalSeconds = 0; display.innerText = "00:00:00";
+        btnPlay.style.display = 'block'; btnPause.style.display = 'none'; btnStop.style.display = 'none';
+        subjectSelect.disabled = false; countdownInput.disabled = false;
+    }
+
+    btnPlay.addEventListener('click', () => {
+        if (!subjectSelect.value) return alert('Por favor, selecione a matéria antes de iniciar.');
+
+        if (currentTimerMode === 'countdown') {
+            if (timerSeconds === 0 && countdownTotalSeconds === 0) {
+                const mins = parseInt(countdownInput.value);
+                if (!mins || mins <= 0) return alert('Insira um tempo válido para o temporizador.');
+                countdownTotalSeconds = mins * 60;
+                timerSeconds = countdownTotalSeconds;
+            }
+        }
+
+        isTimerRunning = true;
+        btnPlay.style.display = 'none'; btnPause.style.display = 'block'; btnStop.style.display = 'block';
+        subjectSelect.disabled = true; countdownInput.disabled = true;
+
+        timerInterval = setInterval(() => {
+            if (currentTimerMode === 'stopwatch') {
+                timerSeconds++;
+                display.innerText = formatTime(timerSeconds);
+            } else {
+                timerSeconds--;
+                display.innerText = formatTime(timerSeconds);
+                if (timerSeconds <= 0) {
+                    clearInterval(timerInterval); isTimerRunning = false;
+                    alert("Tempo concluído! Excelente trabalho.");
+                    finishSession(Math.floor(countdownTotalSeconds / 60), subjectSelect.value);
+                }
+            }
+        }, 1000);
+    });
+
+    btnPause.addEventListener('click', () => {
+        isTimerRunning = false; clearInterval(timerInterval);
+        btnPlay.style.display = 'block'; btnPause.style.display = 'none';
+    });
+
+    btnStop.addEventListener('click', () => {
+        isTimerRunning = false; clearInterval(timerInterval);
+        let minutesStudied = currentTimerMode === 'stopwatch' 
+            ? Math.floor(timerSeconds / 60) 
+            : Math.floor((countdownTotalSeconds - timerSeconds) / 60);
+        finishSession(minutesStudied, subjectSelect.value);
     });
 });
-
 
 // =========================================
 // 6. AÇÕES DO USUÁRIO
 // =========================================
 function addHistoryItem(text, icon = "ri-information-line", colorClass = "text-main") {
-    const now = new Date();
-    const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+    const now = new Date(); const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
     appState.history.push({ id: Date.now().toString(), text, time, icon, colorClass });
     if (appState.history.length > 30) appState.history.shift();
 }
-
 window.addAttr = function(name) {
     if(checkDuplicate(name, appState.attributes)) return false;
     appState.attributes.push({ id: 'att_' + Date.now(), name, xp: 0, level: 1 });
-    addHistoryItem(`Atributo criado: ${name}`, "ri-medal-line", "text-blue");
-    saveAndRenderAll();
-    return true;
+    addHistoryItem(`Atributo criado: ${name}`, "ri-medal-line", "text-blue"); saveAndRenderAll(); return true;
 };
 window.removeAttr = function(id) {
     appState.attributes = appState.attributes.filter(a => a.id !== id);
-    addHistoryItem("Atributo excluído", "ri-delete-bin-line", "text-sub");
-    saveAndRenderAll();
+    addHistoryItem("Atributo excluído", "ri-delete-bin-line", "text-sub"); saveAndRenderAll();
 };
-
 window.toggleActivity = function(id) {
-    const act = appState.activities.find(a => a.id === id);
-    if (!act || act.failed) return;
+    const act = appState.activities.find(a => a.id === id); if (!act || act.failed) return;
     act.completed = !act.completed;
     if (act.completed) {
-        appState.xpTotal += act.xp; appState.dailyXp += act.xp;
-        applyAttributeXp(act.attrId, act.xp, false);
+        appState.xpTotal += act.xp; appState.dailyXp += act.xp; applyAttributeXp(act.attrId, act.xp, false);
         addHistoryItem(`Atividade Entregue: ${act.name}`, "ri-check-double-line", "text-green");
     } else {
         appState.xpTotal = Math.max(0, appState.xpTotal - act.xp); appState.dailyXp = Math.max(0, appState.dailyXp - act.xp);
-        applyAttributeXp(act.attrId, act.xp, true);
-        addHistoryItem(`Desmarcou: ${act.name}`, "ri-arrow-go-back-line", "text-sub");
+        applyAttributeXp(act.attrId, act.xp, true); addHistoryItem(`Desmarcou: ${act.name}`, "ri-arrow-go-back-line", "text-sub");
     }
     saveAndRenderAll();
 };
 window.removeActivity = function(id) {
     const act = appState.activities.find(a => a.id === id);
-    if (act && act.completed) { 
-        appState.xpTotal = Math.max(0, appState.xpTotal - act.xp); 
-        appState.dailyXp = Math.max(0, appState.dailyXp - act.xp); 
-        applyAttributeXp(act.attrId, act.xp, true);
-    }
+    if (act && act.completed) { appState.xpTotal = Math.max(0, appState.xpTotal - act.xp); appState.dailyXp = Math.max(0, appState.dailyXp - act.xp); applyAttributeXp(act.attrId, act.xp, true); }
     appState.activities = appState.activities.filter(a => a.id !== id);
-    addHistoryItem(`Removeu atividade: ${act ? act.name : ''}`, "ri-delete-bin-line", "text-sub");
-    saveAndRenderAll();
+    addHistoryItem(`Removeu atividade: ${act ? act.name : ''}`, "ri-delete-bin-line", "text-sub"); saveAndRenderAll();
 };
-
 window.toggleTask = function(id) {
-    const task = appState.tasks.find(t => t.id === id);
-    if (!task) return;
+    const task = appState.tasks.find(t => t.id === id); if (!task) return;
     task.completed = !task.completed;
     if (task.completed) {
-        appState.xpTotal += task.xp; appState.dailyXp += task.xp;
-        applyAttributeXp(task.attrId, task.xp, false);
+        appState.xpTotal += task.xp; appState.dailyXp += task.xp; applyAttributeXp(task.attrId, task.xp, false);
         addHistoryItem(`Concluiu: ${task.name}`, "ri-check-line", "text-green");
     } else {
         appState.xpTotal = Math.max(0, appState.xpTotal - task.xp); appState.dailyXp = Math.max(0, appState.dailyXp - task.xp);
-        applyAttributeXp(task.attrId, task.xp, true);
-        addHistoryItem(`Desmarcou: ${task.name}`, "ri-arrow-go-back-line", "text-sub");
+        applyAttributeXp(task.attrId, task.xp, true); addHistoryItem(`Desmarcou: ${task.name}`, "ri-arrow-go-back-line", "text-sub");
     }
     saveAndRenderAll();
 };
 window.removeTask = function(id) {
     const task = appState.tasks.find(t => t.id === id);
-    if (task && task.completed) {
-        appState.xpTotal = Math.max(0, appState.xpTotal - task.xp);
-        appState.dailyXp = Math.max(0, appState.dailyXp - task.xp);
-        applyAttributeXp(task.attrId, task.xp, true);
-    }
+    if (task && task.completed) { appState.xpTotal = Math.max(0, appState.xpTotal - task.xp); appState.dailyXp = Math.max(0, appState.dailyXp - task.xp); applyAttributeXp(task.attrId, task.xp, true); }
     appState.tasks = appState.tasks.filter(t => t.id !== id);
-    addHistoryItem(`Deletou tarefa: ${task ? task.name : ''}`, "ri-delete-bin-line", "text-sub");
-    saveAndRenderAll();
+    addHistoryItem(`Deletou tarefa: ${task ? task.name : ''}`, "ri-delete-bin-line", "text-sub"); saveAndRenderAll();
 };
-
 window.toggleHabit = function(id) {
-    const habit = appState.habits.find(h => h.id === id);
-    if (!habit) return;
+    const habit = appState.habits.find(h => h.id === id); if (!habit) return;
     habit.completedToday = !habit.completedToday;
     if (habit.completedToday) {
-        habit.streak += 1; appState.xpTotal += 10; appState.dailyXp += 10;
-        applyAttributeXp(habit.attrId, 10, false);
+        habit.streak += 1; appState.xpTotal += 10; appState.dailyXp += 10; applyAttributeXp(habit.attrId, 10, false);
         addHistoryItem(`Hábito feito: ${habit.name}`, "ri-fire-fill", "text-orange");
     } else {
         habit.streak = Math.max(0, habit.streak - 1); appState.xpTotal = Math.max(0, appState.xpTotal - 10); appState.dailyXp = Math.max(0, appState.dailyXp - 10);
-        applyAttributeXp(habit.attrId, 10, true);
-        addHistoryItem(`Hábito desmarcado: ${habit.name}`, "ri-arrow-go-back-line", "text-sub");
+        applyAttributeXp(habit.attrId, 10, true); addHistoryItem(`Hábito desmarcado: ${habit.name}`, "ri-arrow-go-back-line", "text-sub");
     }
     saveAndRenderAll();
 };
 window.removeHabit = function(id) {
     const habit = appState.habits.find(h => h.id === id);
-    if (habit && habit.completedToday) {
-        appState.xpTotal = Math.max(0, appState.xpTotal - 10);
-        appState.dailyXp = Math.max(0, appState.dailyXp - 10);
-        applyAttributeXp(habit.attrId, 10, true);
-    }
+    if (habit && habit.completedToday) { appState.xpTotal = Math.max(0, appState.xpTotal - 10); appState.dailyXp = Math.max(0, appState.dailyXp - 10); applyAttributeXp(habit.attrId, 10, true); }
     appState.habits = appState.habits.filter(h => h.id !== id);
-    addHistoryItem(`Hábito excluído: ${habit ? habit.name : ''}`, "ri-delete-bin-line", "text-sub");
-    saveAndRenderAll();
+    addHistoryItem(`Hábito excluído: ${habit ? habit.name : ''}`, "ri-delete-bin-line", "text-sub"); saveAndRenderAll();
 };
 
 // =========================================
@@ -676,16 +597,9 @@ function setupModals() {
     ];
 
     modals.forEach(m => {
-        const overlay = document.getElementById(m.id);
-        const btnOpen = document.getElementById(m.btnOpen);
-        const btnCloseList = overlay.querySelectorAll(m.btnClose);
-        const saveBtn = document.getElementById(m.saveBtn);
-        
-        if(btnOpen) btnOpen.addEventListener('click', () => {
-            hideErrors(); overlay.classList.add('active');
-            setTimeout(() => { const i = overlay.querySelector('input'); if(i) i.focus(); }, 100);
-        });
-
+        const overlay = document.getElementById(m.id); const btnOpen = document.getElementById(m.btnOpen);
+        const btnCloseList = overlay.querySelectorAll(m.btnClose); const saveBtn = document.getElementById(m.saveBtn);
+        if(btnOpen) btnOpen.addEventListener('click', () => { hideErrors(); overlay.classList.add('active'); setTimeout(() => { const i = overlay.querySelector('input'); if(i) i.focus(); }, 100); });
         const closeModalFn = () => { overlay.classList.remove('active'); overlay.querySelectorAll('input, select').forEach(i => i.value = ''); hideErrors(); };
         btnCloseList.forEach(btn => btn.addEventListener('click', closeModalFn));
         overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModalFn(); });
@@ -703,7 +617,6 @@ function setupModals() {
         const name = document.getElementById('input-task-name').value.trim();
         const xp = document.getElementById('input-task-xp').value;
         const attrId = document.getElementById('input-task-attr').value;
-        
         let valid = true;
         if (!name) { showError('task-name', 'Obrigatório.'); valid = false; }
         else if (checkDuplicate(name, appState.tasks)) { showError('task-name', 'Já existe.'); valid = false; }
@@ -711,9 +624,7 @@ function setupModals() {
 
         if (valid) {
             appState.tasks.push({ id: 't_' + Date.now(), name, xp: parseInt(xp), attrId, completed: false });
-            addHistoryItem(`Criou tarefa: ${name}`, "ri-add-line", "text-blue");
-            saveAndRenderAll();
-            document.querySelector('.close-task').click();
+            addHistoryItem(`Criou tarefa: ${name}`, "ri-add-line", "text-blue"); saveAndRenderAll(); document.querySelector('.close-task').click();
         }
     });
 
@@ -721,14 +632,11 @@ function setupModals() {
         hideErrors();
         const name = document.getElementById('input-habit-name').value.trim();
         const attrId = document.getElementById('input-habit-attr').value;
-        
         if (!name) { showError('habit-name', 'Obrigatório.'); return; }
         if (checkDuplicate(name, appState.habits)) { showError('habit-name', 'Já existe.'); return; }
         
         appState.habits.push({ id: 'h_' + Date.now(), name, attrId, streak: 0, completedToday: false });
-        addHistoryItem(`Novo hábito: ${name}`, "ri-loop-left-line", "text-blue");
-        saveAndRenderAll();
-        document.querySelector('.close-habit').click();
+        addHistoryItem(`Novo hábito: ${name}`, "ri-loop-left-line", "text-blue"); saveAndRenderAll(); document.querySelector('.close-habit').click();
     });
 
     document.getElementById('save-activity').addEventListener('click', () => {
@@ -747,17 +655,14 @@ function setupModals() {
         if (valid) {
             const xpVal = difficultyMap[diff].xp;
             appState.activities.push({ id: 'a_' + Date.now(), name, dueDate: new Date(dateStr).getTime(), difficulty: diff, attrId, xp: xpVal, completed: false, failed: false });
-            addHistoryItem(`Agendou: ${name}`, "ri-timer-line", "text-blue");
-            saveAndRenderAll();
-            document.querySelector('.close-activity').click();
+            addHistoryItem(`Agendou: ${name}`, "ri-timer-line", "text-blue"); saveAndRenderAll(); document.querySelector('.close-activity').click();
         }
     });
 
     document.getElementById('save-log').addEventListener('click', () => {
         hideErrors(); const desc = document.getElementById('input-log-desc').value.trim();
         if (!desc) { showError('log-desc', 'A descrição é obrigatória.'); return; }
-        addHistoryItem(desc, "ri-edit-line", "text-main"); saveAndRenderAll();
-        document.querySelector('.close-log').click();
+        addHistoryItem(desc, "ri-edit-line", "text-main"); saveAndRenderAll(); document.querySelector('.close-log').click();
     });
 
     document.getElementById('save-study').addEventListener('click', () => {
@@ -766,30 +671,62 @@ function setupModals() {
         const timeStr = document.getElementById('input-study-time').value;
         const time = parseInt(timeStr);
         let valid = true;
-        
         if (!subject) { showError('study-subject', 'A matéria é obrigatória.'); valid = false; }
-        if (!timeStr || isNaN(time) || time <= 0) { showError('study-time', 'Insira um tempo válido (minutos).'); valid = false; }
+        if (!timeStr || isNaN(time) || time <= 0) { showError('study-time', 'Insira um tempo válido.'); valid = false; }
 
         if (valid) {
-            appState.studySessions.push({
-                id: 'std_' + Date.now(),
-                subject: subject,
-                duration: time,
-                timestamp: Date.now()
-            });
-
-            appState.xpTotal += time;
-            appState.dailyXp += time;
-            addHistoryItem(`Estudou ${subject} por ${time} min (+${time} XP)`, "ri-book-read-line", "text-blue");
-            saveAndRenderAll();
-            document.querySelector('.close-study').click();
+            appState.studySessions.push({ id: 'std_' + Date.now(), subject: subject, duration: time, timestamp: Date.now() });
+            const xpGained = time; // Manual sem multiplicador (opcional)
+            appState.xpTotal += xpGained; appState.dailyXp += xpGained;
+            addHistoryItem(`Estudou ${subject} por ${time} min (+${xpGained} XP)`, "ri-book-read-line", "text-blue");
+            saveAndRenderAll(); document.querySelector('.close-study').click();
         }
+    });
+
+    // Limpar Histórico
+    document.getElementById('btn-clear-history').addEventListener('click', () => {
+        if(confirm("Tem certeza que deseja apagar o histórico recente?")) {
+            appState.history = []; saveAndRenderAll();
+        }
+    });
+
+    // Modal de Matéria
+    document.getElementById('btn-new-subject').addEventListener('click', () => {
+        document.getElementById('modal-subject').classList.add('active');
+    });
+    document.querySelector('.close-subject').addEventListener('click', () => {
+        document.getElementById('modal-subject').classList.remove('active');
+    });
+    document.getElementById('save-subject').addEventListener('click', () => {
+        const name = document.getElementById('input-subject-name').value.trim();
+        const color = document.getElementById('input-subject-color').value;
+        if (!name) return showError('subject-name', 'Nome é obrigatório.');
+        
+        appState.subjects.push({ id: 'sub_' + Date.now(), name, color });
+        addHistoryItem(`Matéria adicionada: ${name}`, "ri-bookmark-3-line", "text-blue");
+        saveAndRenderAll();
+        document.querySelector('.close-subject').click();
+    });
+
+    // Modal de Meta de Estudo
+    document.getElementById('btn-edit-study-goal').addEventListener('click', () => {
+        document.getElementById('input-study-goal').value = appState.dailyStudyGoal;
+        document.getElementById('modal-study-goal').classList.add('active');
+    });
+    document.querySelector('.close-study-goal').addEventListener('click', () => {
+        document.getElementById('modal-study-goal').classList.remove('active');
+    });
+    document.getElementById('save-study-goal').addEventListener('click', () => {
+        const goal = parseInt(document.getElementById('input-study-goal').value);
+        if (!goal || goal <= 0) return showError('study-goal', 'Insira um tempo válido.');
+        appState.dailyStudyGoal = goal;
+        updateStudyGoalDisplay();
+        saveAndRenderAll();
+        document.querySelector('.close-study-goal').click();
     });
 }
 
 // Start
 document.addEventListener('DOMContentLoaded', () => {
-    setupModals();
-    loadState();
-    setInterval(checkOverdueActivities, 60000); 
+    setupModals(); loadState(); setInterval(checkOverdueActivities, 60000); 
 });

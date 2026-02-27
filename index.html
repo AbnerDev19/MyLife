@@ -74,7 +74,10 @@
             </div>
 
             <div class="sidebar-block history-block">
-                <h3 class="sidebar-title">Histórico Recente</h3>
+                <div class="flex-between mb-1" style="align-items: center;">
+                    <h3 class="sidebar-title" style="margin:0;">Histórico Recente</h3>
+                    <button class="icon-btn" id="btn-clear-history" title="Limpar Histórico"><i class="ri-delete-bin-line"></i></button>
+                </div>
                 <ul class="history-list" id="history-container">
                 </ul>
             </div>
@@ -142,10 +145,36 @@
                     </div>
                 </div>
 
+                <div class="study-controls-header flex-between mb-3">
+                    <div class="study-goal-box">
+                        <span class="text-sm text-sub">Meta Diária:</span>
+                        <strong id="daily-study-goal-display">0h 0m</strong>
+                        <button class="icon-btn" id="btn-edit-study-goal" title="Editar Meta"><i class="ri-pencil-line"></i></button>
+                    </div>
+                    <div class="streak-multiplier">
+                        <span class="text-sm font-medium"><i class="ri-fire-fill text-yellow"></i> Ofensiva: <span id="streak-multiplier-text">1.0x XP</span></span>
+                    </div>
+                </div>
+
                 <div class="timer-box">
-                    <input type="text" id="timer-subject-input" class="notion-input" style="max-width: 300px; margin: 0 auto; text-align: center; font-size: 1.1rem;" placeholder="O que você vai estudar agora?" autocomplete="off">
+                    <div class="timer-tabs">
+                        <button class="timer-tab active" id="tab-stopwatch">Cronômetro</button>
+                        <button class="timer-tab" id="tab-countdown">Temporizador</button>
+                    </div>
+
+                    <div class="subject-selector-group mb-3">
+                        <select id="timer-subject-select" class="notion-input" style="max-width: 250px; display: inline-block;">
+                            <option value="" disabled selected>Selecione a matéria...</option>
+                        </select>
+                        <button class="action-btn" id="btn-new-subject" style="display: inline-flex; padding: 4px 8px; margin-left: 8px;"><i class="ri-add-line"></i> Nova Matéria</button>
+                    </div>
+
+                    <div id="countdown-setup" style="display: none; margin-bottom: 16px;">
+                        <input type="number" id="countdown-input-minutes" class="notion-input" placeholder="Minutos (ex: 25)" style="max-width: 120px; text-align: center;">
+                    </div>
+
                     <div class="timer-display" id="timer-display">00:00:00</div>
-                    <p class="text-sub text-sm">Você ganhará 1 XP por cada minuto completo.</p>
+                    <p class="text-sub text-sm" id="timer-xp-hint">Ganha 1 XP (+ bônus de ofensiva) por minuto.</p>
                     
                     <div class="timer-controls">
                         <button class="timer-btn btn-play" id="btn-timer-play" title="Iniciar"><i class="ri-play-fill"></i></button>
@@ -153,7 +182,6 @@
                         <button class="timer-btn btn-stop" id="btn-timer-stop" title="Finalizar e Salvar"><i class="ri-stop-fill"></i></button>
                     </div>
                 </div>
-
                 <section class="content-section">
                     <div class="section-header">
                         <h2><i class="ri-bar-chart-box-line"></i> Desempenho por Disciplina (Minutos)</h2>
@@ -285,6 +313,38 @@
             <div class="modal-actions">
                 <button class="btn-cancel close-study">Cancelar</button>
                 <button class="btn-primary" id="save-study">Registrar Estudo</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-subject" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Nova Matéria</h3>
+            <div class="input-group">
+                <input type="text" id="input-subject-name" class="notion-input" placeholder="Nome da matéria..." autocomplete="off">
+                <span class="error-msg" id="error-subject-name"></span>
+            </div>
+            <div class="input-group">
+                <label class="text-sub text-sm mb-1" style="display:block;">Cor da Tag:</label>
+                <input type="color" id="input-subject-color" value="#2383e2" style="width: 100%; height: 40px; border: none; cursor: pointer;">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel close-subject">Cancelar</button>
+                <button class="btn-primary" id="save-subject">Criar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-study-goal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Meta Diária de Estudo</h3>
+            <div class="input-group">
+                <input type="number" id="input-study-goal" class="notion-input" placeholder="Minutos por dia (ex: 120)" min="1">
+                <span class="error-msg" id="error-study-goal"></span>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel close-study-goal">Cancelar</button>
+                <button class="btn-primary" id="save-study-goal">Salvar Meta</button>
             </div>
         </div>
     </div>
