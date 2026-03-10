@@ -302,7 +302,9 @@
         <div class="modal-content">
             <h3 class="modal-title">Adicionar Tempo Manual</h3>
             <div class="input-group">
-                <input type="text" id="input-study-subject" class="notion-input" placeholder="Matéria (ex: Programação, Inglês)..." autocomplete="off">
+                <select id="input-study-subject" class="notion-input">
+                    <option value="" disabled selected>Selecione a matéria...</option>
+                </select>
                 <span class="error-msg" id="error-study-subject"></span>
             </div>
             <div class="input-group">

@@ -162,14 +162,25 @@ function populateAttributeSelects() {
         appState.attributes.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (Lvl ${a.level})</option>`).join('');
     selects.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = optionsHTML; });
 }
+
 function renderSubjectSelect() {
-    const select = document.getElementById('timer-subject-select');
-    if (!select) return;
+    const timerSelect = document.getElementById('timer-subject-select');
+    const manualSelect = document.getElementById('input-study-subject'); 
+    
     let options = '<option value="" disabled selected>Selecione a matéria...</option>';
     appState.subjects.forEach(sub => {
         options += `<option value="${sub.id}">${escapeHTML(sub.name)}</option>`;
     });
-    select.innerHTML = options;
+    
+    if (timerSelect) timerSelect.innerHTML = options;
+    if (manualSelect) manualSelect.innerHTML = options;
+    
+    // Recupera a matéria do cronômetro caso a aba tenha sido recarregada
+    const stateStr = localStorage.getItem('myLifeTimerState');
+    if (stateStr && timerSelect) {
+        const state = JSON.parse(stateStr);
+        timerSelect.value = state.subjectId;
+    }
 }
 
 function renderAttributes() {
@@ -267,7 +278,7 @@ function updateStudyGoalDisplay() {
 }
 
 // =========================================
-// SALA DE ESTUDOS - LÓGICA
+// SALA DE ESTUDOS - LÓGICA GRÁFICOS
 // =========================================
 let studyChartInstance = null;
 
@@ -391,15 +402,17 @@ function saveAndRenderAll(doSave = true) {
 }
 
 // =========================================
-// CRONÔMETRO & TEMPORIZADOR LÓGICA
+// CRONÔMETRO & TEMPORIZADOR LÓGICA (MOTOR EM BACKGROUND)
 // =========================================
 let timerInterval = null;
 let timerSeconds = 0;
 let isTimerRunning = false;
 let currentTimerMode = 'stopwatch'; // 'stopwatch' ou 'countdown'
 let countdownTotalSeconds = 0;
+let timerStartTimestamp = 0; 
 
 function formatTime(totalSeconds) {
+    if (totalSeconds < 0) totalSeconds = 0;
     const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
     const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
     const s = String(totalSeconds % 60).padStart(2, '0');
@@ -437,7 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const subjectName = subject ? subject.name : 'Estudo Geral';
             const multiplier = calculateStudyStreak() || 1;
             
-            // Garantindo o cálculo exato do XP sem erros decimais
             const xpGained = Math.floor(minutesStudied * multiplier);
 
             appState.studySessions.push({
@@ -463,6 +475,32 @@ document.addEventListener('DOMContentLoaded', () => {
         timerSeconds = 0; countdownTotalSeconds = 0; display.innerText = "00:00:00";
         btnPlay.style.display = 'block'; btnPause.style.display = 'none'; btnStop.style.display = 'none';
         subjectSelect.disabled = false; countdownInput.disabled = false;
+        localStorage.removeItem('myLifeTimerState');
+    }
+
+    function startInterval() {
+        timerInterval = setInterval(() => {
+            const now = Date.now();
+            const elapsedSinceStart = Math.floor((now - timerStartTimestamp) / 1000);
+
+            let stateStr = localStorage.getItem('myLifeTimerState');
+            let state = stateStr ? JSON.parse(stateStr) : null;
+            let baseSeconds = state ? state.accumulatedSeconds : 0;
+
+            if (currentTimerMode === 'stopwatch') {
+                timerSeconds = baseSeconds + elapsedSinceStart;
+                display.innerText = formatTime(timerSeconds);
+            } else {
+                timerSeconds = countdownTotalSeconds - (baseSeconds + elapsedSinceStart);
+                display.innerText = formatTime(timerSeconds);
+                if (timerSeconds <= 0) {
+                    clearInterval(timerInterval); isTimerRunning = false;
+                    localStorage.removeItem('myLifeTimerState');
+                    alert("Tempo concluído! Excelente trabalho.");
+                    finishSession(Math.floor(countdownTotalSeconds / 60), subjectSelect.value);
+                }
+            }
+        }, 1000);
     }
 
     btnPlay.addEventListener('click', () => {
@@ -478,37 +516,102 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         isTimerRunning = true;
+        timerStartTimestamp = Date.now();
         btnPlay.style.display = 'none'; btnPause.style.display = 'block'; btnStop.style.display = 'block';
         subjectSelect.disabled = true; countdownInput.disabled = true;
 
-        timerInterval = setInterval(() => {
-            if (currentTimerMode === 'stopwatch') {
-                timerSeconds++;
-                display.innerText = formatTime(timerSeconds);
-            } else {
-                timerSeconds--;
-                display.innerText = formatTime(timerSeconds);
-                if (timerSeconds <= 0) {
-                    clearInterval(timerInterval); isTimerRunning = false;
-                    alert("Tempo concluído! Excelente trabalho.");
-                    finishSession(Math.floor(countdownTotalSeconds / 60), subjectSelect.value);
-                }
-            }
-        }, 1000);
+        localStorage.setItem('myLifeTimerState', JSON.stringify({
+            isRunning: true,
+            mode: currentTimerMode,
+            subjectId: subjectSelect.value,
+            startTimestamp: timerStartTimestamp,
+            accumulatedSeconds: currentTimerMode === 'stopwatch' ? timerSeconds : (countdownTotalSeconds - timerSeconds),
+            countdownTotal: countdownTotalSeconds
+        }));
+
+        startInterval();
     });
 
     btnPause.addEventListener('click', () => {
-        isTimerRunning = false; clearInterval(timerInterval);
+        isTimerRunning = false;
+        clearInterval(timerInterval);
+        
+        const now = Date.now();
+        const elapsedSinceStart = Math.floor((now - timerStartTimestamp) / 1000);
+        
+        let stateStr = localStorage.getItem('myLifeTimerState');
+        let state = stateStr ? JSON.parse(stateStr) : null;
+        let newAccumulated = (state ? state.accumulatedSeconds : 0) + elapsedSinceStart;
+        
+        if(currentTimerMode === 'stopwatch'){
+             timerSeconds = newAccumulated;
+        } else {
+             timerSeconds = countdownTotalSeconds - newAccumulated;
+        }
+
+        localStorage.setItem('myLifeTimerState', JSON.stringify({
+            isRunning: false,
+            mode: currentTimerMode,
+            subjectId: subjectSelect.value,
+            accumulatedSeconds: newAccumulated,
+            countdownTotal: countdownTotalSeconds
+        }));
+
         btnPlay.style.display = 'block'; btnPause.style.display = 'none';
     });
 
     btnStop.addEventListener('click', () => {
         isTimerRunning = false; clearInterval(timerInterval);
-        let minutesStudied = currentTimerMode === 'stopwatch' 
-            ? Math.floor(timerSeconds / 60) 
-            : Math.floor((countdownTotalSeconds - timerSeconds) / 60);
+        
+        let minutesStudied = 0;
+        let stateStr = localStorage.getItem('myLifeTimerState');
+        let state = stateStr ? JSON.parse(stateStr) : null;
+
+        if (state && state.isRunning) {
+            const now = Date.now();
+            const elapsedSinceStart = Math.floor((now - state.startTimestamp) / 1000);
+            const totalAccumulated = state.accumulatedSeconds + elapsedSinceStart;
+            minutesStudied = Math.floor(totalAccumulated / 60);
+        } else if (state && !state.isRunning) {
+            minutesStudied = Math.floor(state.accumulatedSeconds / 60);
+        } else {
+            minutesStudied = currentTimerMode === 'stopwatch' ? Math.floor(timerSeconds / 60) : Math.floor((countdownTotalSeconds - timerSeconds) / 60);
+        }
+
         finishSession(minutesStudied, subjectSelect.value);
     });
+
+    // Auto-recupera os dados visuais do Timer se a página for fechada e aberta
+    setTimeout(() => {
+        const stateStr = localStorage.getItem('myLifeTimerState');
+        if (stateStr) {
+            const state = JSON.parse(stateStr);
+            currentTimerMode = state.mode;
+            countdownTotalSeconds = state.countdownTotal || 0;
+            
+            if (currentTimerMode === 'countdown') {
+                tabCountdown.classList.add('active'); tabStopwatch.classList.remove('active');
+                countdownSetup.style.display = 'block';
+                countdownInput.value = countdownTotalSeconds / 60;
+            } else {
+                tabStopwatch.classList.add('active'); tabCountdown.classList.remove('active');
+                countdownSetup.style.display = 'none';
+            }
+
+            if (state.isRunning) {
+                timerStartTimestamp = state.startTimestamp;
+                isTimerRunning = true;
+                btnPlay.style.display = 'none'; btnPause.style.display = 'block'; btnStop.style.display = 'block';
+                subjectSelect.disabled = true; countdownInput.disabled = true;
+                startInterval(); 
+            } else {
+                timerSeconds = currentTimerMode === 'stopwatch' ? state.accumulatedSeconds : (countdownTotalSeconds - state.accumulatedSeconds);
+                display.innerText = formatTime(timerSeconds);
+                btnPlay.style.display = 'block'; btnPause.style.display = 'none'; btnStop.style.display = 'block';
+                subjectSelect.disabled = true; countdownInput.disabled = true;
+            }
+        }
+    }, 1500); 
 });
 
 // =========================================
@@ -667,19 +770,36 @@ function setupModals() {
 
     document.getElementById('save-study').addEventListener('click', () => {
         hideErrors();
-        const subject = document.getElementById('input-study-subject').value.trim();
+        const subjectId = document.getElementById('input-study-subject').value;
         const timeStr = document.getElementById('input-study-time').value;
         const time = parseInt(timeStr);
         let valid = true;
-        if (!subject) { showError('study-subject', 'A matéria é obrigatória.'); valid = false; }
+        
+        if (!subjectId) { showError('study-subject', 'A matéria é obrigatória.'); valid = false; }
         if (!timeStr || isNaN(time) || time <= 0) { showError('study-time', 'Insira um tempo válido.'); valid = false; }
 
         if (valid) {
-            appState.studySessions.push({ id: 'std_' + Date.now(), subject: subject, duration: time, timestamp: Date.now() });
-            const xpGained = time; // Manual sem multiplicador (opcional)
-            appState.xpTotal += xpGained; appState.dailyXp += xpGained;
-            addHistoryItem(`Estudou ${subject} por ${time} min (+${xpGained} XP)`, "ri-book-read-line", "text-blue");
-            saveAndRenderAll(); document.querySelector('.close-study').click();
+            const subject = appState.subjects.find(s => s.id === subjectId);
+            const subjectName = subject ? subject.name : 'Estudo Geral';
+            const subjectColor = subject ? subject.color : '#2383e2';
+
+            appState.studySessions.push({ 
+                id: 'std_' + Date.now(), 
+                subject: subjectName, 
+                subjectColor: subjectColor, 
+                duration: time, 
+                timestamp: Date.now() 
+            });
+            
+            const xpGained = time;
+            appState.xpTotal += xpGained; 
+            appState.dailyXp += xpGained;
+            
+            const subjTag = `<span class="subject-badge" style="background-color: ${subjectColor}">${escapeHTML(subjectName)}</span>`;
+            addHistoryItem(`Estudou ${subjTag} por ${time} min (+${xpGained} XP)`, "ri-book-read-line", "text-blue");
+            
+            saveAndRenderAll(); 
+            document.querySelector('.close-study').click();
         }
     });
 
