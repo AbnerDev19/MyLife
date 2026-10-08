@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a11y_desc">O FocusLock usa este serviço para saber qual aplicativo foi aberto e mostrar a tela de bloqueio durante o seu desafio. Se você ligar o filtro visual, ele também captura a tela de tempos em tempos para analisar no próprio aparelho se há conteúdo explícito; a imagem não é salva nem enviada. No modo Hardcore, ele verifica se uma tela de ajustes do sistema trata do FocusLock.</string>
+</resources>
